@@ -1,0 +1,36 @@
+# Postgres 17 local para desenvolvimento.
+# Alternativa ao túnel SSH — sobe um banco idêntico ao da VPS (mesmo DDL).
+#
+# Uso:
+#   docker compose -f docker-compose.dev.yml up -d
+#   # DATABASE_URL aponta para localhost:5432
+#   npm run prisma:pull && npm run prisma:generate
+#
+# O script docker/postgres/init/01-schema.sql roda só na PRIMEIRA subida
+# (quando o volume está vazio). Para recriar o schema do zero:
+#   docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: 3f_core_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: 3f_core_app
+      # Senha só de DEV. Em produção use um secret de verdade.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_change_me}
+      POSTGRES_DB: 3f_core
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U 3f_core_app -d 3f_core']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+    name: 3f_core_postgres_dev_data

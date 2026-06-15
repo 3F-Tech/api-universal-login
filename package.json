@@ -1,0 +1,78 @@
+{
+  "name": "api-universal-login",
+  "version": "1.0.0",
+  "description": "3F Core API — API de identidade centralizada da 3F Venture (autenticação e gestão de usuários, BUs, squads, sistemas e API Keys).",
+  "type": "module",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "cross-env NODE_ENV=test vitest run",
+    "test:watch": "cross-env NODE_ENV=test vitest",
+    "test:coverage": "cross-env NODE_ENV=test vitest run --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "prisma:pull": "prisma db pull",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "db:seed": "cross-env NODE_ENV=development tsx prisma/seed.ts",
+    "key:create": "tsx scripts/create-api-key.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "keywords": [
+    "3f-venture",
+    "identity",
+    "authentication",
+    "api",
+    "express",
+    "prisma"
+  ],
+  "author": "3F Venture",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "pg": "^8.21.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.3",
+    "@types/pg": "^8.20.0",
+    "@types/supertest": "^7.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.61.0",
+    "@typescript-eslint/parser": "^8.61.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "pino-pretty": "^13.1.3",
+    "prettier": "^3.8.4",
+    "prisma": "^7.8.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

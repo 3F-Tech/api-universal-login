@@ -1,0 +1,85 @@
+# CLAUDE.md
+
+Guia para agentes (Claude Code) trabalhando neste repositório. Leia antes de editar.
+
+## O que é
+
+**3F Core API** (`api-universal-login`): API de identidade centralizada da 3F Venture. Backend-to-backend,
+autenticada por **API Key** (`X-API-Key`) com autorização por **scopes**. PostgreSQL é a fonte da
+verdade; o schema do Prisma é **introspectado**, nunca escrito à mão.
+
+## Comandos
+
+```bash
+npm run dev          # desenvolvimento (tsx watch)
+npm run typecheck    # tsc --noEmit  (rode SEMPRE após mudar tipos)
+npm test             # Vitest (smoke + unit, hermético — não toca o banco)
+npm run lint         # ESLint (flat config)
+npm run build        # compila para dist/
+npm run prisma:pull && npm run prisma:generate   # após mudanças no banco
+```
+
+Antes de concluir qualquer tarefa de código: **`npm run typecheck && npm run lint && npm test`**.
+
+## Decisões travadas (NÃO reverter sem pedir)
+
+- **Express 5** — tratamento de erro async é nativo: handlers `async` podem **lançar** (`throw new
+NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHandler`. `req.query`
+  é read-only.
+- **ESM / NodeNext** — `package.json` tem `"type": "module"`. **Todo import relativo usa extensão
+  `.js`** (ex: `import { env } from '../config/env.js'`), mesmo apontando para um `.ts`.
+- **Prisma 7** (mudou bastante vs. 6):
+  - **Sem `url` no `schema.prisma`.** A connection string da CLI fica em `prisma.config.ts`
+    (`datasource.url`); em runtime quem conecta é o **driver adapter** `@prisma/adapter-pg` em
+    `src/config/database.ts`. Reintroduzir `url` no schema quebra (`P1012`).
+  - **`prisma db pull` exige banco vivo** (Docker local na 5432 ou túnel SSH na 5433). Sem isso,
+    não há models nem client tipado.
+  - **Models são gerados por introspecção.** NÃO criar/editar models à mão nem rodar migrations
+    que criem tabelas.
+- **DELETE = exclusão real** (hard delete). `is_active` é **independente** e mexido só via
+  `PATCH { is_active }` (soft-disable, não soft-delete).
+- **`created_by` / `leader_id` vêm do body** e são **obrigatórios no create** de `department`,
+  `position`, `band`, `api_key` e `squad` (leader_id). A coluna é nullable no banco, mas o Zod
+  exige. Validar que o user existe antes (`utils/references.ts`) para erro 404 limpo.
+- **`/auth/validate`:** user inexistente → 401 (sem log); sem vínculo em `systems_users` → 403
+  (sem log); conta inativa ou senha errada (com vínculo) → log `success=false` + 403/401; sucesso
+  → log `success=true` + retorna o user (sem `password`).
+- **Scopes:** `admin:*` libera tudo; `<recurso>:*` libera o recurso; senão match exato. Catálogo
+  em `src/config/scopes.ts`.
+
+## Convenções de código
+
+- **Padrão de módulo** (`src/modules/<nome>/`): `routes.ts` → `controller.ts` → `service.ts` →
+  `schema.ts`. Controllers são finos (parse Zod + chama service + `sendItem`/`sendList`). Lógica
+  de dados fica no service. Rotas com `requireScope(...)`.
+- **Respostas:** use `sendItem(res, data, status?)` e `sendList(res, data, buildMeta(total, query))`
+  de `utils/http.js`. Paginação via `paginationQuerySchema` + `toSkipTake` (`utils/pagination.js`).
+- **Erros:** lance as classes de `utils/errors.js` (`NotFoundError`, `ConflictError`, etc.). O
+  `error-handler` mapeia ZodError → 400 e erros conhecidos do Prisma (P2002→409, P2025→404,
+  P2003→409). 5xx não vazam mensagem interna.
+- **Acesso a dados:** os models introspectados usam **nomes snake_case** (`prisma.api_key`,
+  `prisma.systems_users`, campos `created_at`, `system_id`...). Os **nomes de relação são feios e
+  desambiguados** (ex: `user_band_created_byTouser`, `buTobu`). **Prefira campos escalares / ids
+  explícitos e filtros `where` por relação** (`{ systems_users: { some: { system_id } } }`); evite
+  `include` com nomes de relação frágeis.
+- **Nunca exponha segredos:** `password` (use `omit: { password: true }`) e `key_hash`
+  (`omit: { key_hash: true }`) ficam fora das respostas. O logger (`utils/logger.ts`) já faz redact.
+- **BigInt:** `systems_users_access.id` é `BigInt` — serialize com `.toString()` (ver
+  `modules/access-logs/service.ts`), senão `JSON.stringify` quebra.
+- **TypeScript:** `strict` + `noUncheckedIndexedAccess`. Sem `any` sem justificativa em comentário.
+- **Cross-platform:** scripts npm portáveis (use `cross-env` p/ env vars). Sem paths com `/`/`\`
+  hardcoded — `path.join`.
+
+## Testes
+
+`tests/` é hermético: `tests/setup.ts` injeta um `DATABASE_URL` dummy e desliga o pretty-log, então
+os smoke tests (app boot, `/health`, proteção por API key) e unit tests **não tocam o banco**.
+Testes de integração contra Postgres ficam como evolução (factories já em `tests/helpers`).
+
+## Não faça
+
+- Não rode migrations Prisma que criem/alterem tabelas (banco é a fonte da verdade).
+- Não use CORS aberto (`*`). CORS só via `CORS_ORIGINS` explícito.
+- Não logue senhas, keys cruas ou hashes.
+- Não commite `.env` (só `.env.example`).
+- Não hardcode credenciais/URLs/IPs — tudo via `env` validado (`src/config/env.ts`).

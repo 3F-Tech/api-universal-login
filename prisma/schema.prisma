@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model api_key {
+  id           Int       @id @default(autoincrement())
+  system_id    Int
+  name         String    @db.VarChar(150)
+  key_hash     String    @unique @db.VarChar(255)
+  key_prefix   String    @db.VarChar(12)
+  scopes       String[]  @default([])
+  last_used_at DateTime? @db.Timestamptz(6)
+  expires_at   DateTime? @db.Timestamptz(6)
+  is_active    Boolean   @default(true)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  created_by   Int?
+  user         user?     @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  system       system    @relation(fields: [system_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([is_active], map: "idx_api_key_is_active")
+  @@index([key_hash], map: "idx_api_key_key_hash")
+  @@index([system_id], map: "idx_api_key_system_id")
+}
+
+model band {
+  id                         Int      @id @default(autoincrement())
+  name                       String   @db.VarChar(100)
+  color_hex                  String?  @db.VarChar(7)
+  sort_order                 Int      @default(0)
+  is_active                  Boolean  @default(true)
+  created_at                 DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime @default(now()) @db.Timestamptz(6)
+  created_by                 Int?
+  user_band_created_byTouser user?    @relation("band_created_byTouser", fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_band_created_by")
+  user_user_band_idToband    user[]   @relation("user_band_idToband")
+}
+
+model bu {
+  id                  Int           @id @default(autoincrement())
+  name                String        @db.VarChar(100)
+  description         String?
+  slug                String        @unique @db.VarChar(100)
+  primary_color_hex   String?       @db.VarChar(7)
+  secondary_color_hex String?       @db.VarChar(7)
+  parent_id           Int?
+  logo_picture        String?
+  is_active           Boolean       @default(true)
+  created_at          DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime      @default(now()) @db.Timestamptz(6)
+  bu                  bu?           @relation("buTobu", fields: [parent_id], references: [id], onUpdate: NoAction)
+  other_bu            bu[]          @relation("buTobu")
+  squad               squad[]
+  systems_bus         systems_bus[]
+  user                user[]
+
+  @@index([parent_id], map: "idx_bu_parent_id")
+  @@index([slug], map: "idx_bu_slug")
+}
+
+model department {
+  id                                  Int      @id @default(autoincrement())
+  name                                String   @db.VarChar(100)
+  icon                                String?  @db.VarChar(100)
+  is_active                           Boolean  @default(true)
+  created_at                          DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                          DateTime @default(now()) @db.Timestamptz(6)
+  created_by                          Int?
+  user_department_created_byTouser    user?    @relation("department_created_byTouser", fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_department_created_by")
+  user_user_department_idTodepartment user[]   @relation("user_department_idTodepartment")
+}
+
+model position {
+  id                              Int      @id @default(autoincrement())
+  name                            String   @db.VarChar(100)
+  is_active                       Boolean  @default(true)
+  created_at                      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime @default(now()) @db.Timestamptz(6)
+  created_by                      Int?
+  user_position_created_byTouser  user?    @relation("position_created_byTouser", fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_position_created_by")
+  user_user_position_idToposition user[]   @relation("user_position_idToposition")
+}
+
+model squad {
+  id                         Int      @id @default(autoincrement())
+  name                       String   @db.VarChar(150)
+  description                String?
+  picture                    String?
+  leader_id                  Int?
+  bu_id                      Int?
+  is_active                  Boolean  @default(true)
+  created_at                 DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime @default(now()) @db.Timestamptz(6)
+  bu                         bu?      @relation(fields: [bu_id], references: [id], onUpdate: NoAction)
+  user_squad_leader_idTouser user?    @relation("squad_leader_idTouser", fields: [leader_id], references: [id], onUpdate: NoAction)
+  user_user_squad_idTosquad  user[]   @relation("user_squad_idTosquad")
+
+  @@index([bu_id], map: "idx_squad_bu_id")
+  @@index([leader_id], map: "idx_squad_leader_id")
+}
+
+model system {
+  id            Int             @id @default(autoincrement())
+  name          String          @db.VarChar(150)
+  description   String?
+  link          String?         @db.VarChar(500)
+  logo_picture  String?
+  is_active     Boolean         @default(true)
+  created_at    DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime        @default(now()) @db.Timestamptz(6)
+  api_key       api_key[]
+  systems_bus   systems_bus[]
+  systems_users systems_users[]
+}
+
+model systems_bus {
+  system_id Int
+  bu_id     Int
+  bu        bu     @relation(fields: [bu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  system    system @relation(fields: [system_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([system_id, bu_id])
+}
+
+model systems_users {
+  id                   Int                    @id @default(autoincrement())
+  system_id            Int
+  user_id              Int
+  created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  system               system                 @relation(fields: [system_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user                 user                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  systems_users_access systems_users_access[]
+
+  @@unique([system_id, user_id], map: "uq_systems_users")
+  @@index([system_id], map: "idx_systems_users_system_id")
+  @@index([user_id], map: "idx_systems_users_user_id")
+}
+
+model systems_users_access {
+  id               BigInt        @id @default(autoincrement())
+  systems_users_id Int
+  accessed_at      DateTime      @default(now()) @db.Timestamptz(6)
+  success          Boolean
+  systems_users    systems_users @relation(fields: [systems_users_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([accessed_at(sort: Desc)], map: "idx_systems_users_access_accessed_at")
+  @@index([systems_users_id], map: "idx_systems_users_access_systems_users_id")
+}
+
+model user {
+  id                                        Int             @id @default(autoincrement())
+  name                                      String          @db.VarChar(150)
+  email                                     String          @unique @db.VarChar(150)
+  personal_email                            String?         @db.VarChar(150)
+  password                                  String          @db.VarChar(60)
+  birth_date                                DateTime?       @db.Date
+  cpf                                       String?         @unique @db.VarChar(14)
+  cnpj                                      String?         @unique @db.VarChar(18)
+  sex                                       String?         @db.VarChar(10)
+  phone                                     String?         @db.VarChar(20)
+  instagram                                 String?         @db.VarChar(100)
+  linkedin                                  String?         @db.VarChar(200)
+  role                                      String          @db.VarChar(50)
+  department_id                             Int?
+  position_id                               Int?
+  bu_id                                     Int?
+  band_id                                   Int?
+  squad_id                                  Int?
+  profile_picture                           String?
+  cep                                       String?         @db.VarChar(9)
+  street                                    String?         @db.VarChar(200)
+  street_number                             String?         @db.VarChar(20)
+  neighborhood                              String?         @db.VarChar(100)
+  complement                                String?         @db.VarChar(200)
+  city                                      String?         @db.VarChar(100)
+  state                                     String?         @db.VarChar(50)
+  country                                   String?         @db.VarChar(50)
+  is_active                                 Boolean         @default(true)
+  created_at                                DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                                DateTime        @default(now()) @db.Timestamptz(6)
+  api_key                                   api_key[]
+  band_band_created_byTouser                band[]          @relation("band_created_byTouser")
+  department_department_created_byTouser    department[]    @relation("department_created_byTouser")
+  position_position_created_byTouser        position[]      @relation("position_created_byTouser")
+  squad_squad_leader_idTouser               squad[]         @relation("squad_leader_idTouser")
+  systems_users                             systems_users[]
+  squad_user_squad_idTosquad                squad?          @relation("user_squad_idTosquad", fields: [squad_id], references: [id], onUpdate: NoAction, map: "fk_user_squad")
+  band_user_band_idToband                   band?           @relation("user_band_idToband", fields: [band_id], references: [id], onUpdate: NoAction)
+  bu                                        bu?             @relation(fields: [bu_id], references: [id], onUpdate: NoAction)
+  department_user_department_idTodepartment department?     @relation("user_department_idTodepartment", fields: [department_id], references: [id], onUpdate: NoAction)
+  position_user_position_idToposition       position?       @relation("user_position_idToposition", fields: [position_id], references: [id], onUpdate: NoAction)
+
+  @@index([bu_id], map: "idx_user_bu_id")
+  @@index([cpf], map: "idx_user_cpf")
+  @@index([department_id], map: "idx_user_department_id")
+  @@index([email], map: "idx_user_email")
+  @@index([is_active], map: "idx_user_is_active")
+  @@index([squad_id], map: "idx_user_squad_id")
+}

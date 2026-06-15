@@ -1,0 +1,12 @@
+# Dependências e saídas geradas
+node_modules/
+dist/
+coverage/
+src/generated/
+
+# Arquivos que não devem ser reformatados
+package-lock.json
+planning.md
+
+# Prisma (schema gerado por db pull)
+prisma/schema.prisma
