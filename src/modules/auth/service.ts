@@ -1,9 +1,13 @@
-import type { user } from '@prisma/client';
+import type { bu, user } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { verifyPassword } from '../../utils/bcrypt.js';
 import { ForbiddenError, UnauthorizedError } from '../../utils/errors.js';
 
 export type SafeUser = Omit<user, 'password'>;
+/** BU do usuário com o flag de origem (true = BU do squad, marcada pelo front). */
+export type UserBu = bu & { from_squad: boolean };
+/** Resposta do /auth/validate: usuário (sem senha) + suas BUs (N:N). */
+export type ValidatedUser = SafeUser & { bus: UserBu[] };
 
 /**
  * Valida credenciais (email + senha) para o sistema chamador (identificado pela
@@ -21,7 +25,7 @@ export async function validateCredentials(
   email: string,
   password: string,
   systemId: number,
-): Promise<SafeUser> {
+): Promise<ValidatedUser> {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     throw new UnauthorizedError('Credenciais inválidas.', { code: 'INVALID_CREDENTIALS' });
@@ -52,8 +56,14 @@ export async function validateCredentials(
 
   await registerAccess(link.id, true);
 
+  const links = await prisma.users_bus.findMany({
+    where: { user_id: user.id },
+    select: { from_squad: true, bu: true },
+    orderBy: { bu_id: 'asc' },
+  });
+
   const { password: _password, ...safeUser } = user;
-  return safeUser;
+  return { ...safeUser, bus: links.map(({ bu, from_squad }) => ({ ...bu, from_squad })) };
 }
 
 function registerAccess(systemsUsersId: number, success: boolean): Promise<unknown> {

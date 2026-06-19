@@ -35,10 +35,11 @@ export async function getById(id: number) {
 }
 
 export async function create(input: CreateBandInput) {
-  await assertUserExists(input.created_by, 'CREATED_BY_NOT_FOUND');
+  if (input.created_by !== undefined) await assertUserExists(input.created_by, 'CREATED_BY_NOT_FOUND');
   const data: Prisma.bandUncheckedCreateInput = {
     name: input.name,
     color_hex: input.color_hex,
+    icon: input.icon,
     sort_order: input.sort_order,
     is_active: input.is_active,
     created_by: input.created_by,

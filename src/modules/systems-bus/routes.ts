@@ -8,7 +8,12 @@ export const systemsBusRouter = Router();
 systemsBusRouter.get(
   '/systems/:systemId/bus',
   requireScope(SCOPES.systemsBusRead),
-  controller.listBus,
+  controller.listBuIds,
+);
+systemsBusRouter.put(
+  '/systems/:systemId/bus',
+  requireScope(SCOPES.systemsBusWrite),
+  controller.replaceBus,
 );
 systemsBusRouter.post(
   '/systems/:systemId/bus',

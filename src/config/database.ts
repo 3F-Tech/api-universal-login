@@ -11,7 +11,20 @@ import { logger } from '../utils/logger.js';
  * vem do env já validado — nunca hardcode.
  */
 const adapter = new PrismaPg(
-  { connectionString: env.DATABASE_URL },
+  {
+    connectionString: env.DATABASE_URL,
+    // Mantém até 10 conexões abertas.
+    max: 10,
+    // 10 min: muito acima do default de 10s do pg. Evita fechar conexões
+    // no meio de períodos curtos de inatividade (o default de 10s é a causa
+    // principal do cold start de ~3s após breve inatividade).
+    idleTimeoutMillis: 600_000,
+    // Timeout explícito ao tentar obter uma conexão do pool.
+    connectionTimeoutMillis: 10_000,
+    // TCP keepalive: mantém o túnel SSH vivo e detecta conexões fantasma
+    // antes que o pg tente reutilizá-las.
+    keepAlive: true,
+  },
   {
     onPoolError: (err) => logger.error({ err }, 'Erro no pool de conexões do PostgreSQL'),
   },

@@ -7,6 +7,8 @@ export const squadsRouter = Router();
 
 squadsRouter.get('/squads', requireScope(SCOPES.squadsRead), controller.list);
 squadsRouter.get('/squads/:id', requireScope(SCOPES.squadsRead), controller.getById);
+// Usuários do squad. Exige users:read pois devolve dados de usuário (PII + BUs).
+squadsRouter.get('/squads/:id/users', requireScope(SCOPES.usersRead), controller.listUsers);
 squadsRouter.post('/squads', requireScope(SCOPES.squadsWrite), controller.create);
 squadsRouter.patch('/squads/:id', requireScope(SCOPES.squadsWrite), controller.update);
 squadsRouter.delete('/squads/:id', requireScope(SCOPES.squadsDelete), controller.remove);

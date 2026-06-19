@@ -47,13 +47,42 @@ export async function unlinkUser(systemId: number, userId: number) {
   return { system_id: systemId, user_id: userId, deleted: true };
 }
 
-/** Sistemas a que um usuário tem acesso (visão inversa). */
-export async function listUserSystems(userId: number, query: PaginationQuery) {
+/** Acessos do usuário — pivot { system_id, role } sem paginação. */
+export async function getUserSystemAccess(
+  userId: number,
+): Promise<{ system_id: number; role: string | null }[]> {
   await assertUserExists(userId);
-  const where: Prisma.systemWhereInput = { systems_users: { some: { user_id: userId } } };
-  const [data, total] = await Promise.all([
-    prisma.system.findMany({ where, orderBy: { name: 'asc' }, ...toSkipTake(query) }),
-    prisma.system.count({ where }),
-  ]);
-  return { data, total };
+  return prisma.systems_users.findMany({
+    where: { user_id: userId },
+    select: { system_id: true, role: true },
+    orderBy: { system_id: 'asc' },
+  });
+}
+
+/**
+ * Substitui completamente os acessos de um usuário em uma única transação.
+ * Deduplica por system_id e valida existência de cada sistema antes de iniciar.
+ */
+export async function replaceUserSystems(
+  userId: number,
+  systems: { system_id: number; role: string }[],
+): Promise<{ system_id: number; role: string | null }[]> {
+  await assertUserExists(userId);
+  const unique = [...new Map(systems.map((s) => [s.system_id, s])).values()];
+  await Promise.all(unique.map((s) => assertSystemExists(s.system_id)));
+
+  await prisma.$transaction(async (tx) => {
+    await tx.systems_users.deleteMany({ where: { user_id: userId } });
+    if (unique.length > 0) {
+      await tx.systems_users.createMany({
+        data: unique.map((s) => ({ system_id: s.system_id, user_id: userId, role: s.role })),
+      });
+    }
+  });
+
+  return prisma.systems_users.findMany({
+    where: { user_id: userId },
+    select: { system_id: true, role: true },
+    orderBy: { system_id: 'asc' },
+  });
 }

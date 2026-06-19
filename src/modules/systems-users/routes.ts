@@ -23,5 +23,10 @@ systemsUsersRouter.delete(
 systemsUsersRouter.get(
   '/users/:userId/systems',
   requireScope(SCOPES.systemsUsersRead),
-  controller.listSystems,
+  controller.listSystemAccess,
+);
+systemsUsersRouter.put(
+  '/users/:userId/systems',
+  requireScope(SCOPES.systemsUsersWrite),
+  controller.replaceSystems,
 );

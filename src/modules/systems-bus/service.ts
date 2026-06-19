@@ -40,6 +40,43 @@ export async function unlinkBu(systemId: number, buId: number) {
   return { system_id: systemId, bu_id: buId, deleted: true };
 }
 
+/** bu_ids vinculadas a um sistema — lista completa sem paginação (pivot). */
+export async function getSystemBuIds(systemId: number): Promise<{ bu_id: number }[]> {
+  await assertSystemExists(systemId);
+  return prisma.systems_bus.findMany({
+    where: { system_id: systemId },
+    select: { bu_id: true },
+    orderBy: { bu_id: 'asc' },
+  });
+}
+
+/**
+ * Substitui completamente as BUs de um sistema em uma única transação.
+ * Deduplica bu_ids e valida existência de cada BU antes de iniciar.
+ */
+export async function replaceSystemBus(
+  systemId: number,
+  buIds: number[],
+): Promise<{ bu_id: number }[]> {
+  await assertSystemExists(systemId);
+  const uniqueIds = [...new Set(buIds)];
+  await Promise.all(uniqueIds.map(assertBuExists));
+
+  return prisma.$transaction(async (tx) => {
+    await tx.systems_bus.deleteMany({ where: { system_id: systemId } });
+    if (uniqueIds.length > 0) {
+      await tx.systems_bus.createMany({
+        data: uniqueIds.map((bu_id) => ({ system_id: systemId, bu_id })),
+      });
+    }
+    return tx.systems_bus.findMany({
+      where: { system_id: systemId },
+      select: { bu_id: true },
+      orderBy: { bu_id: 'asc' },
+    });
+  });
+}
+
 /** Sistemas vinculados a uma BU (visão inversa). */
 export async function listBuSystems(buId: number, query: PaginationQuery) {
   await assertBuExists(buId);

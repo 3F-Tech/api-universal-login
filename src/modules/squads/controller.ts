@@ -7,7 +7,7 @@ import {
   updateSquadSchema,
 } from './schema.js';
 import { sendItem, sendList } from '../../utils/http.js';
-import { buildMeta } from '../../utils/pagination.js';
+import { buildMeta, paginationQuerySchema } from '../../utils/pagination.js';
 
 export async function list(req: Request, res: Response): Promise<void> {
   const query = listSquadsQuerySchema.parse(req.query);
@@ -18,6 +18,13 @@ export async function list(req: Request, res: Response): Promise<void> {
 export async function getById(req: Request, res: Response): Promise<void> {
   const { id } = squadParamsSchema.parse(req.params);
   sendItem(res, await squadsService.getById(id));
+}
+
+export async function listUsers(req: Request, res: Response): Promise<void> {
+  const { id } = squadParamsSchema.parse(req.params);
+  const query = paginationQuerySchema.parse(req.query);
+  const { data, total } = await squadsService.listUsers(id, query);
+  sendList(res, data, buildMeta(total, query));
 }
 
 export async function create(req: Request, res: Response): Promise<void> {

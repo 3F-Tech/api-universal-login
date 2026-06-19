@@ -30,7 +30,7 @@ export function createApp(): Express {
     app.use(cors({ origin: env.CORS_ORIGINS }));
   }
 
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: '10mb' }));
   app.use(requestLogger);
 
   // Healthcheck público (sem API key).

@@ -20,6 +20,51 @@ export async function list(query: ListSystemsQuery) {
   return { data, total };
 }
 
+/**
+ * Lista sistemas já com suas BUs embutidas (campo `bus`) numa quantidade FIXA de
+ * queries — não cresce com o número de sistemas: 1 para os sistemas da página,
+ * 1 para os vínculos (pivot) e 1 para as BUs. Substitui o padrão N+1 em que o
+ * front chamava GET /systems/:id/bus uma vez por sistema.
+ *
+ * Usa só campos escalares + filtros `where ... in` (sem include de relação),
+ * conforme a convenção do projeto.
+ */
+export async function listWithBus(query: ListSystemsQuery) {
+  const where = buildWhere(query);
+  const [systems, total] = await Promise.all([
+    prisma.system.findMany({ where, orderBy: { name: 'asc' }, ...toSkipTake(query) }),
+    prisma.system.count({ where }),
+  ]);
+
+  const systemIds = systems.map((s) => s.id);
+
+  // Vínculos + dados da BU numa ÚNICA query (join pelo pivot). `bu` é a relação
+  // FK direta do pivot (nome limpo, não as relações desambiguadas frágeis), então
+  // o select é seguro. O `where` usa a PK composta (system_id, bu_id).
+  const links = systemIds.length
+    ? await prisma.systems_bus.findMany({
+        where: { system_id: { in: systemIds } },
+        select: { system_id: true, bu: true },
+      })
+    : [];
+
+  // Agrupa as BUs por sistema em memória.
+  type LinkedBu = (typeof links)[number]['bu'];
+  const busBySystem = new Map<number, LinkedBu[]>();
+  for (const link of links) {
+    const arr = busBySystem.get(link.system_id) ?? [];
+    arr.push(link.bu);
+    busBySystem.set(link.system_id, arr);
+  }
+  // Ordena as BUs de cada sistema por nome.
+  for (const arr of busBySystem.values()) {
+    arr.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const data = systems.map((s) => ({ ...s, bus: busBySystem.get(s.id) ?? [] }));
+  return { data, total };
+}
+
 export async function getById(id: number) {
   const found = await prisma.system.findUnique({ where: { id } });
   if (!found) {

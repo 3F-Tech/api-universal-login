@@ -70,6 +70,38 @@ NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHan
 - **Cross-platform:** scripts npm portáveis (use `cross-env` p/ env vars). Sem paths com `/`/`\`
   hardcoded — `path.join`.
 
+## Regras locais (`rule.md`)
+
+O contexto transversal (config, middleware, utils, bootstrap) está **neste arquivo**. O **padrão de
+módulo** (cadeia `routes→controller→service→schema`, convenções comuns e índice) está em
+**`src/modules/rule.md`**. O detalhe de cada módulo de negócio vive num **`rule.md` dentro da pasta
+do módulo** (`src/modules/<nome>/rule.md`): endpoints, schema Zod, regras de negócio, erros e gotchas.
+A ideia é que qualquer agente pegue o contexto completo lendo só os `.md`, sem precisar abrir o código.
+
+**Política (obrigatória):**
+
+1. **Antes de codar** num módulo, leia o `rule.md` dele.
+2. **Depois de mudar** algo relevante (endpoint, schema, regra), atualize o `rule.md` local na mesma tarefa.
+3. **Módulo novo:** crie o `rule.md` e adicione a linha no mapa abaixo.
+
+### Mapa de `rule.md`
+
+| Módulo | Caminho | Responsabilidade |
+|---|---|---|
+| auth | `src/modules/auth/rule.md` | Valida credenciais (`/auth/validate`) e registra acesso em `systems_users_access` |
+| users | `src/modules/users/rule.md` | CRUD de usuários (+ vínculo N:N com BU via `users_bus`) |
+| api-keys | `src/modules/api-keys/rule.md` | CRUD de API Keys, tipos (`adm`/`login`) e geração show-once |
+| bus | `src/modules/bus/rule.md` | CRUD de Business Units (árvore via `parent_id`) |
+| squads | `src/modules/squads/rule.md` | CRUD de squads (`leader_id` obrigatório) |
+| departments | `src/modules/departments/rule.md` | CRUD de departamentos |
+| positions | `src/modules/positions/rule.md` | CRUD de cargos (`position`, nome reservado em SQL) |
+| bands | `src/modules/bands/rule.md` | CRUD de bands/faixas |
+| systems | `src/modules/systems/rule.md` | CRUD do catálogo de sistemas consumidores |
+| systems-users | `src/modules/systems-users/rule.md` | Vínculo N:N user↔system (+ `role` por sistema) |
+| systems-bus | `src/modules/systems-bus/rule.md` | Vínculo N:N system↔bu |
+| access-logs | `src/modules/access-logs/rule.md` | Leitura dos logs de acesso (`id` é BigInt) |
+| health | `src/modules/health/rule.md` | Healthcheck (única rota sem auth) |
+
 ## Testes
 
 `tests/` é hermético: `tests/setup.ts` injeta um `DATABASE_URL` dummy e desliga o pretty-log, então

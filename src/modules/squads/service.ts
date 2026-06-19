@@ -1,8 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { NotFoundError } from '../../utils/errors.js';
-import { toSkipTake } from '../../utils/pagination.js';
-import { assertBuExists, assertUserExists } from '../../utils/references.js';
+import { toSkipTake, type PaginationQuery } from '../../utils/pagination.js';
+import { assertBuExists, assertSquadExists, assertUserExists } from '../../utils/references.js';
+import * as usersService from '../users/service.js';
 import type { CreateSquadInput, ListSquadsQuery, UpdateSquadInput } from './schema.js';
 
 function buildWhere(query: ListSquadsQuery): Prisma.squadWhereInput {
@@ -29,6 +30,15 @@ export async function getById(id: number) {
     throw new NotFoundError(`Squad com id ${id} não encontrado.`, { code: 'SQUAD_NOT_FOUND' });
   }
   return found;
+}
+
+/**
+ * Usuários de um squad (via user.squad_id). Valida o squad (404 limpo) e delega
+ * para a listagem de users — então já vem paginado e com as BUs (`bus`) embutidas.
+ */
+export async function listUsers(squadId: number, query: PaginationQuery) {
+  await assertSquadExists(squadId);
+  return usersService.list({ ...query, squad_id: squadId });
 }
 
 export async function create(input: CreateSquadInput) {

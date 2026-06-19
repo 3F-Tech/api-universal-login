@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import * as service from './service.js';
 import {
   linkUserBodySchema,
+  replaceSystemsBodySchema,
   systemIdParamSchema,
   systemUserParamsSchema,
   userIdParamSchema,
@@ -27,9 +28,13 @@ export async function unlink(req: Request, res: Response): Promise<void> {
   sendItem(res, await service.unlinkUser(systemId, userId));
 }
 
-export async function listSystems(req: Request, res: Response): Promise<void> {
+export async function listSystemAccess(req: Request, res: Response): Promise<void> {
   const { userId } = userIdParamSchema.parse(req.params);
-  const query = paginationQuerySchema.parse(req.query);
-  const { data, total } = await service.listUserSystems(userId, query);
-  sendList(res, data, buildMeta(total, query));
+  sendItem(res, await service.getUserSystemAccess(userId));
+}
+
+export async function replaceSystems(req: Request, res: Response): Promise<void> {
+  const { userId } = userIdParamSchema.parse(req.params);
+  const { systems } = replaceSystemsBodySchema.parse(req.body);
+  sendItem(res, await service.replaceUserSystems(userId, systems));
 }

@@ -20,6 +20,16 @@ export const listUsersQuerySchema = paginationQuerySchema.extend({
 
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
+/**
+ * Vínculo usuário↔BU (pivot users_bus). `from_squad` vem do FRONT: é o front que
+ * identifica a BU do squad e marca true; as demais (atribuídas manualmente) ficam
+ * false. A API apenas persiste — não há sincronização automática com squad.bu_id.
+ */
+const busLinkSchema = z.object({
+  bu_id: id,
+  from_squad: z.boolean().optional().default(false),
+});
+
 export const createUserSchema = z.object({
   name: z.string().trim().min(1).max(150),
   email: z.string().trim().toLowerCase().email().max(150),
@@ -35,9 +45,11 @@ export const createUserSchema = z.object({
   linkedin: z.string().trim().max(200).optional(),
   department_id: optionalId,
   position_id: optionalId,
-  bu_id: optionalId,
   band_id: optionalId,
   squad_id: optionalId,
+  // Vínculos N:N com BUs. Presente no create grava os vínculos; no update (vide
+  // updateUserSchema) presente = substitui todos, ausente = não mexe.
+  bus: z.array(busLinkSchema).optional(),
   profile_picture: z.string().trim().optional(),
   cep: z.string().trim().max(9).optional(),
   street: z.string().trim().max(200).optional(),

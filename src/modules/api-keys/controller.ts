@@ -15,6 +15,11 @@ export async function list(req: Request, res: Response): Promise<void> {
   sendList(res, data, buildMeta(total, query));
 }
 
+export function listTypes(_req: Request, res: Response): void {
+  const types = apiKeysService.listTypes();
+  sendList(res, types, { total: types.length, page: 1, perPage: types.length });
+}
+
 export async function getById(req: Request, res: Response): Promise<void> {
   const { id } = apiKeyParamsSchema.parse(req.params);
   sendItem(res, await apiKeysService.getById(id));

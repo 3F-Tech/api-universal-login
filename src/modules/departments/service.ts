@@ -36,7 +36,7 @@ export async function getById(id: number) {
 }
 
 export async function create(input: CreateDepartmentInput) {
-  await assertUserExists(input.created_by, 'CREATED_BY_NOT_FOUND');
+  if (input.created_by !== undefined) await assertUserExists(input.created_by, 'CREATED_BY_NOT_FOUND');
   const data: Prisma.departmentUncheckedCreateInput = {
     name: input.name,
     icon: input.icon,

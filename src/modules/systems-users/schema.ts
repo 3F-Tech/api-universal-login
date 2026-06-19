@@ -13,4 +13,14 @@ export const linkUserBodySchema = z.object({
   created_by: id.optional(),
 });
 
+export const replaceSystemsBodySchema = z.object({
+  systems: z.array(
+    z.object({
+      system_id: id,
+      role: z.string().min(1),
+    }),
+  ),
+});
+
 export type LinkUserBody = z.infer<typeof linkUserBodySchema>;
+export type ReplaceSystemsBody = z.infer<typeof replaceSystemsBodySchema>;

@@ -68,6 +68,19 @@ function normalize(err: unknown): NormalizedError {
       message: 'Requisição inválida para o banco de dados.',
     };
   }
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'type' in err &&
+    (err as Record<string, unknown>)['type'] === 'entity.too.large'
+  ) {
+    const limit = (err as Record<string, unknown>)['limit'];
+    return {
+      statusCode: 413,
+      code: 'PAYLOAD_TOO_LARGE',
+      message: `O corpo da requisição excede o limite permitido (${typeof limit === 'number' ? `${Math.round(limit / 1024 / 1024)}MB` : String(limit)}).`,
+    };
+  }
   return { statusCode: 500, code: 'INTERNAL_ERROR', message: 'Erro interno do servidor.' };
 }
 

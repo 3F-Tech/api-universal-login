@@ -36,6 +36,7 @@ model band {
   created_at                 DateTime @default(now()) @db.Timestamptz(6)
   updated_at                 DateTime @default(now()) @db.Timestamptz(6)
   created_by                 Int?
+  icon                       String?  @db.VarChar(100)
   user_band_created_byTouser user?    @relation("band_created_byTouser", fields: [created_by], references: [id], onUpdate: NoAction, map: "fk_band_created_by")
   user_user_band_idToband    user[]   @relation("user_band_idToband")
 }
@@ -56,7 +57,7 @@ model bu {
   other_bu            bu[]          @relation("buTobu")
   squad               squad[]
   systems_bus         systems_bus[]
-  user                user[]
+  users_bus           users_bus[]
 
   @@index([parent_id], map: "idx_bu_parent_id")
   @@index([slug], map: "idx_bu_slug")
@@ -131,6 +132,7 @@ model systems_users {
   system_id            Int
   user_id              Int
   created_at           DateTime               @default(now()) @db.Timestamptz(6)
+  role                 String?                @db.VarChar(50)
   system               system                 @relation(fields: [system_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user                 user                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   systems_users_access systems_users_access[]
@@ -138,6 +140,7 @@ model systems_users {
   @@unique([system_id, user_id], map: "uq_systems_users")
   @@index([system_id], map: "idx_systems_users_system_id")
   @@index([user_id], map: "idx_systems_users_user_id")
+  @@index([role], map: "idx_systems_users_role")
 }
 
 model systems_users_access {
@@ -167,7 +170,6 @@ model user {
   role                                      String          @db.VarChar(50)
   department_id                             Int?
   position_id                               Int?
-  bu_id                                     Int?
   band_id                                   Int?
   squad_id                                  Int?
   profile_picture                           String?
@@ -190,14 +192,27 @@ model user {
   systems_users                             systems_users[]
   squad_user_squad_idTosquad                squad?          @relation("user_squad_idTosquad", fields: [squad_id], references: [id], onUpdate: NoAction, map: "fk_user_squad")
   band_user_band_idToband                   band?           @relation("user_band_idToband", fields: [band_id], references: [id], onUpdate: NoAction)
-  bu                                        bu?             @relation(fields: [bu_id], references: [id], onUpdate: NoAction)
   department_user_department_idTodepartment department?     @relation("user_department_idTodepartment", fields: [department_id], references: [id], onUpdate: NoAction)
   position_user_position_idToposition       position?       @relation("user_position_idToposition", fields: [position_id], references: [id], onUpdate: NoAction)
+  users_bus                                 users_bus[]
 
-  @@index([bu_id], map: "idx_user_bu_id")
   @@index([cpf], map: "idx_user_cpf")
   @@index([department_id], map: "idx_user_department_id")
   @@index([email], map: "idx_user_email")
   @@index([is_active], map: "idx_user_is_active")
   @@index([squad_id], map: "idx_user_squad_id")
+}
+
+model users_bus {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  bu_id      Int
+  from_squad Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  bu         bu       @relation(fields: [bu_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       user     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, bu_id], map: "uq_users_bus")
+  @@index([bu_id], map: "idx_users_bus_bu_id")
+  @@index([user_id], map: "idx_users_bus_user_id")
 }

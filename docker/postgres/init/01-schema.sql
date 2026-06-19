@@ -71,6 +71,7 @@ CREATE TABLE band (
   id          SERIAL PRIMARY KEY,
   name        VARCHAR(100) NOT NULL,
   color_hex   VARCHAR(7),
+  icon        VARCHAR(100),
   sort_order  INTEGER NOT NULL DEFAULT 0,
   is_active   BOOLEAN NOT NULL DEFAULT TRUE,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -99,7 +100,7 @@ CREATE TABLE "user" (
   role            VARCHAR(50) NOT NULL,
   department_id   INTEGER REFERENCES department(id) ON DELETE SET NULL,
   position_id     INTEGER REFERENCES "position"(id) ON DELETE SET NULL,
-  bu_id           INTEGER REFERENCES bu(id) ON DELETE SET NULL,
+  -- bu_id removido: relação user↔BU agora é N:N via tabela users_bus.
   band_id         INTEGER REFERENCES band(id) ON DELETE SET NULL,
   squad_id        INTEGER, -- FK adicionada após criar tabela squad
   profile_picture TEXT,
@@ -180,6 +181,19 @@ CREATE TABLE systems_bus (
 );
 
 -- ============================================
+-- TABELA: users_bus (N:N entre user e bu)
+-- from_squad: true = BU do squad (marcada pelo front); false = vínculo manual.
+-- ============================================
+CREATE TABLE users_bus (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  bu_id      INTEGER NOT NULL REFERENCES bu(id) ON DELETE CASCADE,
+  from_squad BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_users_bus UNIQUE (user_id, bu_id)
+);
+
+-- ============================================
 -- TABELA: systems_users_access (log de acessos)
 -- ============================================
 CREATE TABLE systems_users_access (
@@ -214,7 +228,6 @@ CREATE TRIGGER trg_api_key_updated_at BEFORE UPDATE ON api_key
 -- ============================================
 CREATE INDEX idx_user_email          ON "user"(email);
 CREATE INDEX idx_user_cpf            ON "user"(cpf);
-CREATE INDEX idx_user_bu_id          ON "user"(bu_id);
 CREATE INDEX idx_user_squad_id       ON "user"(squad_id);
 CREATE INDEX idx_user_department_id  ON "user"(department_id);
 CREATE INDEX idx_user_is_active      ON "user"(is_active);
@@ -224,6 +237,8 @@ CREATE INDEX idx_bu_parent_id        ON bu(parent_id);
 CREATE INDEX idx_bu_slug             ON bu(slug);
 CREATE INDEX idx_systems_users_user_id    ON systems_users(user_id);
 CREATE INDEX idx_systems_users_system_id  ON systems_users(system_id);
+CREATE INDEX idx_users_bus_user_id        ON users_bus(user_id);
+CREATE INDEX idx_users_bus_bu_id          ON users_bus(bu_id);
 CREATE INDEX idx_systems_users_access_systems_users_id ON systems_users_access(systems_users_id);
 CREATE INDEX idx_systems_users_access_accessed_at      ON systems_users_access(accessed_at DESC);
 CREATE INDEX idx_api_key_system_id   ON api_key(system_id);

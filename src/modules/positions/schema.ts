@@ -16,7 +16,7 @@ export type ListPositionsQuery = z.infer<typeof listPositionsQuerySchema>;
 export const createPositionSchema = z.object({
   name: z.string().trim().min(1).max(100),
   is_active: z.boolean().optional(),
-  created_by: id,
+  created_by: id.optional(),
 });
 
 export type CreatePositionInput = z.infer<typeof createPositionSchema>;

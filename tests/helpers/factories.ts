@@ -34,7 +34,7 @@ export function buildApiKeyInput(
   return {
     system_id: systemId,
     name: `key-${uniq()}`,
-    scopes: ['users:read'],
+    type: 'login',
     created_by: createdBy,
     ...overrides,
   };
