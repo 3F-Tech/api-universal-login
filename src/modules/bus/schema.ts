@@ -26,11 +26,11 @@ export const createBuSchema = z.object({
     .min(1)
     .max(100)
     .regex(/^[a-z0-9-]+$/, 'Slug deve conter apenas letras minúsculas, números e hífens'),
-  description: z.string().trim().optional(),
-  primary_color_hex: hexColor.optional(),
-  secondary_color_hex: hexColor.optional(),
-  parent_id: id.optional(),
-  logo_picture: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
+  primary_color_hex: hexColor.nullish(),
+  secondary_color_hex: hexColor.nullish(),
+  parent_id: id.nullish(),
+  logo_picture: z.string().trim().nullish(),
   is_active: z.boolean().optional(),
 });
 

@@ -19,8 +19,8 @@ export const createBandSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato #RRGGBB')
-    .optional(),
-  icon: z.string().trim().min(1).max(100).optional(),
+    .nullish(),
+  icon: z.string().trim().min(1).max(100).nullish(),
   sort_order: z.coerce.number().int().min(0).optional(),
   is_active: z.boolean().optional(),
   created_by: id.optional(),
@@ -34,8 +34,8 @@ export const updateBandSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato #RRGGBB')
-    .optional(),
-  icon: z.string().trim().min(1).max(100).optional(),
+    .nullish(),
+  icon: z.string().trim().min(1).max(100).nullish(),
   sort_order: z.coerce.number().int().min(0).optional(),
   is_active: z.boolean().optional(),
 });

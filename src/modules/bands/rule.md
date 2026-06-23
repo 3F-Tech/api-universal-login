@@ -26,15 +26,17 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 - **params** (`bandParamsSchema`): `id` (`z.coerce.number().int().positive()`).
 - **create** (`createBandSchema`):
   - `name` (trim, 1–100 chars, obrigatório).
-  - `color_hex` (trim, regex `^#[0-9A-Fa-f]{6}$` — formato `#RRGGBB`, opcional). Mensagem custom:
+  - `color_hex` (trim, regex `^#[0-9A-Fa-f]{6}$` — formato `#RRGGBB`, `.nullish()`). Mensagem custom:
     "Cor deve estar no formato #RRGGBB".
-  - `icon` (trim, 1–100, opcional).
+  - `icon` (trim, 1–100, `.nullish()`).
   - `sort_order` (`z.coerce.number().int().min(0)`, opcional).
   - `is_active` (boolean, opcional).
   - `created_by` (id positivo, opcional no Zod).
 - **update** (`updateBandSchema`): `name`, `color_hex`, `icon`, `sort_order`, `is_active` — todos
-  opcionais (mesmas validações do create). **`created_by` não está no update** (definido só na
-  criação).
+  opcionais (mesmas validações do create; `color_hex`/`icon` `.nullish()`). **`created_by` não está
+  no update** (definido só na criação).
+- **Nullable aceita `null`:** `color_hex` e `icon` usam `.nullish()` (cliente pode mandar `null`).
+  `created_by` segue `.optional()` (exigido pela regra de negócio, não aceita `null`). Ver `../rule.md`.
 - **list query** (`listBandsQuerySchema`): estende `paginationQuerySchema` com `is_active`
   (`booleanQueryParam` → boolean) e `q` (trim, 1–100, busca por nome).
 

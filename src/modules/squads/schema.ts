@@ -17,11 +17,11 @@ export type ListSquadsQuery = z.infer<typeof listSquadsQuerySchema>;
 
 export const createSquadSchema = z.object({
   name: z.string().trim().min(1).max(150),
-  description: z.string().trim().optional(),
-  picture: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
+  picture: z.string().trim().nullish(),
   // leader_id é obrigatório no create (mesma lógica do created_by).
   leader_id: id,
-  bu_id: id.optional(),
+  bu_id: id.nullish(),
   is_active: z.boolean().optional(),
 });
 
@@ -29,10 +29,10 @@ export type CreateSquadInput = z.infer<typeof createSquadSchema>;
 
 export const updateSquadSchema = z.object({
   name: z.string().trim().min(1).max(150).optional(),
-  description: z.string().trim().optional(),
-  picture: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
+  picture: z.string().trim().nullish(),
   leader_id: id.optional(),
-  bu_id: id.optional(),
+  bu_id: id.nullish(),
   is_active: z.boolean().optional(),
 });
 

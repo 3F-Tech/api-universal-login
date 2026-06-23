@@ -34,6 +34,13 @@ routes.ts  →  controller.ts  →  service.ts  →  schema.ts
 - **Auth:** todas as rotas (exceto `health`) passam por `apiKeyAuth` + `requireScope`. Catálogo de
   scopes em `src/config/scopes.ts`.
 - **CRUD padrão:** `DELETE` = hard delete; `is_active` é soft-disable independente (via `PATCH`).
+- **Campos nullable no banco aceitam `null`:** todo campo opcional cuja coluna é *nullable* usa
+  `.nullish()` (= `.nullable().optional()`) no Zod — o cliente pode mandar `null` em vez de omitir, e
+  `null` grava `null` (limpa o valor/vínculo). **Exceções** (continuam `.optional()` sem `null`): os
+  campos *deliberadamente exigidos* apesar de nullable no banco — `created_by` (`department`/`band`/
+  `api_key`) e `leader_id` (`squad`, no create) — e colunas `NOT NULL` (`name`, `is_active`,
+  `sort_order`, etc.). Ao validar FK nullable antes do Prisma, use `!= null` (não `!== undefined`),
+  senão `null` cairia no `assertXExists`.
 
 ## Índice de módulos
 

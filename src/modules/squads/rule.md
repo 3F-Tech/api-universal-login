@@ -28,10 +28,14 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 ## Schema (Zod) — `schema.ts`
 
 - **create** (`createSquadSchema`): `name` (1–150 chars, obrigatório), `leader_id` (id positivo,
-  **obrigatório** — mesma lógica do `created_by`), `description` (opcional), `picture` (opcional),
-  `bu_id` (id positivo, opcional), `is_active` (boolean, opcional).
-- **update** (`updateSquadSchema`): todos opcionais — `name`, `description`, `picture`, `leader_id`,
-  `bu_id`, `is_active`.
+  **obrigatório** — mesma lógica do `created_by`), `description` (`.nullish()` — aceita string, `null`
+  ou ausência), `picture` (`.nullish()`), `bu_id` (id positivo, `.nullish()`), `is_active` (boolean,
+  opcional).
+- **update** (`updateSquadSchema`): todos opcionais — `name`, `leader_id` e `is_active`; já
+  `description`, `picture` e `bu_id` são `.nullish()` (aceitam `null` para limpar o campo).
+- **Campos nullable no banco aceitam `null`** (decisão travada): o front pode mandar `null` em vez de
+  omitir o campo. `description`, `picture` e `bu_id` usam `.nullish()` (= `.nullable().optional()`).
+  `null` grava `null` na coluna (limpa o vínculo/valor).
 - **list query** (`listSquadsQuerySchema`): estende `paginationQuerySchema` (`page`, `perPage`) com
   `is_active` (`"true"`/`"false"` → boolean via `booleanQueryParam`), `bu_id`, `leader_id` e `q`
   (busca textual, 1–150 chars).
@@ -41,9 +45,11 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 - **`leader_id` obrigatório no create** (decisão travada): a coluna é nullable no banco, mas o Zod
   exige. Antes de persistir, valida que o user existe (`assertUserExists` → 404 `LEADER_NOT_FOUND`).
-- **`bu_id` opcional**: quando informado (no create ou no update), valida que a BU existe
-  (`assertBuExists` → 404 `BU_NOT_FOUND`).
-- **No update**, `leader_id` e `bu_id` só são validados quando vêm no body (`!== undefined`).
+- **`bu_id` opcional/nullable**: quando informado com valor (no create ou no update), valida que a BU
+  existe (`assertBuExists` → 404 `BU_NOT_FOUND`). `bu_id: null` limpa o vínculo (vira squad sem BU) e
+  **não** dispara validação.
+- **No update**, `leader_id` só é validado quando vem no body (`!== undefined`); `bu_id` só é
+  validado quando vem com valor (`!= null` — assim `null` passa direto para limpar o vínculo).
 - **`is_active` vs DELETE:** `PATCH { is_active: false }` faz soft-disable (religável); `DELETE`
   remove de vez. Alinhado com a regra global (DELETE = hard delete; `is_active` = soft-disable).
 - **Listagem** ordenada por `name` asc; filtro `q` faz `contains` case-insensitive sobre `name`.

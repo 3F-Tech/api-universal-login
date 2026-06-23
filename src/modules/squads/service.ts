@@ -43,7 +43,7 @@ export async function listUsers(squadId: number, query: PaginationQuery) {
 
 export async function create(input: CreateSquadInput) {
   await assertUserExists(input.leader_id, 'LEADER_NOT_FOUND');
-  if (input.bu_id !== undefined) await assertBuExists(input.bu_id);
+  if (input.bu_id != null) await assertBuExists(input.bu_id);
 
   const data: Prisma.squadUncheckedCreateInput = {
     name: input.name,
@@ -58,7 +58,7 @@ export async function create(input: CreateSquadInput) {
 
 export async function update(id: number, input: UpdateSquadInput) {
   if (input.leader_id !== undefined) await assertUserExists(input.leader_id, 'LEADER_NOT_FOUND');
-  if (input.bu_id !== undefined) await assertBuExists(input.bu_id);
+  if (input.bu_id != null) await assertBuExists(input.bu_id);
 
   const data: Prisma.squadUncheckedUpdateInput = { ...input };
   return prisma.squad.update({ where: { id }, data });

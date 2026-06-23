@@ -24,9 +24,10 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 - **params** (`departmentParamsSchema`): `id` (`z.coerce.number().int().positive()`).
 - **create** (`createDepartmentSchema`): `name` (trim, 1–100 chars, obrigatório), `icon` (trim,
-  máx 100, opcional), `is_active` (boolean, opcional), `created_by` (id positivo, opcional no Zod).
-- **update** (`updateDepartmentSchema`): `name`, `icon`, `is_active` — todos opcionais. **`created_by`
-  não é alterável via update** (definido só na criação; ver comentário no schema).
+  máx 100, `.nullish()` — aceita `null`), `is_active` (boolean, opcional), `created_by` (id positivo,
+  opcional no Zod; **não** aceita `null`).
+- **update** (`updateDepartmentSchema`): `name`, `icon` (`.nullish()`), `is_active` — todos opcionais.
+  **`created_by` não é alterável via update** (definido só na criação; ver comentário no schema).
 - **list query** (`listDepartmentsQuerySchema`): estende `paginationQuerySchema` com `is_active`
   (`booleanQueryParam` → boolean) e `q` (trim, 1–100, busca por nome).
 

@@ -25,7 +25,7 @@ export const createApiKeySchema = z.object({
   name: z.string().trim().min(1).max(150),
   type: apiKeyType,
   created_by: id.optional(),
-  expires_at: z.coerce.date().optional(),
+  expires_at: z.coerce.date().nullish(),
 });
 
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;

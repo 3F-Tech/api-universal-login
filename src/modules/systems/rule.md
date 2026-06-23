@@ -30,8 +30,9 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 - **list query** (`listSystemsQuerySchema`): herda `paginationQuerySchema` (`page`, `perPage`) +
   `is_active` (`booleanQueryParam`, `"true"`/`"false"` → boolean), `q` (busca por nome, 1–150 chars)
   e `include` (enum só com `'bus'`).
-- **create** (`createSystemSchema`): `name` (1–150 chars, obrigatório), `description` (opcional),
-  `link` (URL válida, máx 500, opcional), `logo_picture` (opcional), `is_active` (boolean opcional).
+- **create** (`createSystemSchema`): `name` (1–150 chars, obrigatório), `description` (`.nullish()`),
+  `link` (URL válida, máx 500, `.nullish()`), `logo_picture` (`.nullish()`), `is_active` (boolean
+  opcional). Campos nullable no banco aceitam `null` (ver `../rule.md`).
 - **update** (`updateSystemSchema`): `createSystemSchema.partial()` — todos os campos opcionais.
 
 ## Regras de negócio

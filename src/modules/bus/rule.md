@@ -36,17 +36,19 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 - **create** (`createBuSchema`):
   - `name` (obrigatório, 1–100 chars, trim);
   - `slug` (obrigatório, 1–100 chars, regex `^[a-z0-9-]+$` — só minúsculas, números e hífens);
-  - `description` (opcional);
-  - `primary_color_hex` / `secondary_color_hex` (opcionais, regex `^#[0-9A-Fa-f]{6}$` — formato `#RRGGBB`);
-  - `parent_id` (id positivo, opcional);
-  - `logo_picture` (opcional);
+  - `description` (`.nullish()` — aceita `null`);
+  - `primary_color_hex` / `secondary_color_hex` (`.nullish()`, regex `^#[0-9A-Fa-f]{6}$` — formato `#RRGGBB`);
+  - `parent_id` (id positivo, `.nullish()` — `null` torna a BU raiz);
+  - `logo_picture` (`.nullish()`);
   - `is_active` (boolean, opcional).
+  - Campos nullable no banco usam `.nullish()` (cliente pode mandar `null`); ver convenção em `../rule.md`.
 - **update** (`updateBuSchema`): `createBuSchema.partial()` — todos os campos opcionais.
 
 ## Regras de negócio
 
 - **Hierarquia em árvore:** `parent_id` é auto-relacionamento. Na criação/edição, se `parent_id`
-  vier, a BU-pai é validada via `assertBuExists` (404 limpo se não existir).
+  vier **com valor** (`!= null`), a BU-pai é validada via `assertBuExists` (404 limpo se não existir).
+  `parent_id: null` torna a BU uma raiz (não dispara validação).
 - **Anti-ciclo (parcial):** no `update`, `parent_id === id` é rejeitado (`INVALID_PARENT`) — uma BU
   não pode ser pai dela mesma. (Não há checagem de ciclos mais profundos no código.)
 - **`is_active` vs DELETE:** alinhado com a regra global — `PATCH { is_active: false }` é
@@ -64,10 +66,10 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   por `id` num `Map`, anexa cada nó ao pai (`children`) e devolve as raízes (`parent_id` nulo).
   Tipo de retorno `BuTreeNode` (`bu` + `children: BuTreeNode[]`).
 - `getById`: `findUnique`; se não achar, lança `NotFoundError` (`BU_NOT_FOUND`).
-- `create`: se `parent_id` vier, `assertBuExists`; monta `Prisma.buUncheckedCreateInput` com os
-  campos do input e persiste (`prisma.bu.create`).
-- `update`: se `parent_id` vier, valida `!== id` (`INVALID_PARENT`) e `assertBuExists`; aplica o
-  input com spread (`...input`) e `prisma.bu.update`.
+- `create`: se `parent_id` vier com valor (`!= null`), `assertBuExists`; monta
+  `Prisma.buUncheckedCreateInput` com os campos do input e persiste (`prisma.bu.create`).
+- `update`: se `parent_id` vier com valor (`!= null`), valida `!== id` (`INVALID_PARENT`) e
+  `assertBuExists`; aplica o input com spread (`...input`) e `prisma.bu.update`.
 - `remove`: hard delete (`prisma.bu.delete`).
 
 ## Erros

@@ -15,7 +15,7 @@ export type ListDepartmentsQuery = z.infer<typeof listDepartmentsQuerySchema>;
 
 export const createDepartmentSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  icon: z.string().trim().max(100).optional(),
+  icon: z.string().trim().max(100).nullish(),
   is_active: z.boolean().optional(),
   created_by: id.optional(),
 });
@@ -25,7 +25,7 @@ export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
 // created_by é definido na criação e não é alterável via update.
 export const updateDepartmentSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
-  icon: z.string().trim().max(100).optional(),
+  icon: z.string().trim().max(100).nullish(),
   is_active: z.boolean().optional(),
 });
 

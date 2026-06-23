@@ -38,6 +38,11 @@ NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHan
     que criem tabelas.
 - **DELETE = exclusão real** (hard delete). `is_active` é **independente** e mexido só via
   `PATCH { is_active }` (soft-disable, não soft-delete).
+- **Campos nullable no banco aceitam `null`:** todo campo opcional cuja coluna é *nullable* usa
+  `.nullish()` no Zod (cliente pode mandar `null` em vez de omitir; `null` grava `null`/limpa o
+  vínculo). Exceções que seguem `.optional()` sem aceitar `null`: `created_by` e `leader_id`
+  (exigidos apesar de nullable) e colunas `NOT NULL`. Guard de FK nullable antes do Prisma usa
+  `!= null`, não `!== undefined`.
 - **`created_by` / `leader_id` vêm do body** e são **obrigatórios no create** de `department`,
   `position`, `band`, `api_key` e `squad` (leader_id). A coluna é nullable no banco, mas o Zod
   exige. Validar que o user existe antes (`utils/references.ts`) para erro 404 limpo.

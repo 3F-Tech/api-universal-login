@@ -53,7 +53,7 @@ export async function getById(id: number) {
 }
 
 export async function create(input: CreateBuInput) {
-  if (input.parent_id !== undefined) await assertBuExists(input.parent_id);
+  if (input.parent_id != null) await assertBuExists(input.parent_id);
   const data: Prisma.buUncheckedCreateInput = {
     name: input.name,
     slug: input.slug,
@@ -68,7 +68,7 @@ export async function create(input: CreateBuInput) {
 }
 
 export async function update(id: number, input: UpdateBuInput) {
-  if (input.parent_id !== undefined) {
+  if (input.parent_id != null) {
     if (input.parent_id === id) {
       throw new ValidationError('Uma BU não pode ser pai dela mesma.', { code: 'INVALID_PARENT' });
     }

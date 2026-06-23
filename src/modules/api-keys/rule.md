@@ -45,7 +45,8 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 ## Schema (Zod) — `schema.ts`
 
 - **create** (`createApiKeySchema`): `system_id` (obrigatório), `name` (1–150 chars, obrigatório),
-  `type` (`adm`|`login`, obrigatório), `created_by` (opcional), `expires_at` (opcional).
+  `type` (`adm`|`login`, obrigatório), `created_by` (opcional, **não** aceita `null`), `expires_at`
+  (`.nullish()` — aceita `null` = nunca expira).
 - **update** (`updateApiKeySchema`): todos opcionais — `name`, `type`, `is_active`, `expires_at`
   (aceita `null` pra remover a expiração).
 - **list query**: `system_id`, `is_active` (`"true"`/`"false"` → boolean), `page`, `perPage`.

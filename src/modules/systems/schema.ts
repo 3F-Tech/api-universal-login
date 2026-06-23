@@ -17,9 +17,9 @@ export type ListSystemsQuery = z.infer<typeof listSystemsQuerySchema>;
 
 export const createSystemSchema = z.object({
   name: z.string().trim().min(1).max(150),
-  description: z.string().trim().optional(),
-  link: z.string().trim().url().max(500).optional(),
-  logo_picture: z.string().trim().optional(),
+  description: z.string().trim().nullish(),
+  link: z.string().trim().url().max(500).nullish(),
+  logo_picture: z.string().trim().nullish(),
   is_active: z.boolean().optional(),
 });
 

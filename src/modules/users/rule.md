@@ -22,7 +22,9 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 
 - **create** (`createUserSchema`): obrigatórios `name`, `email` (lowercase), `password` (8–72),
   `role`. Opcionais: dados pessoais (cpf, cnpj, phone, instagram…), endereço, FKs (`department_id`,
-  `position_id`, `band_id`, `squad_id`) e `bus` (array de vínculos).
+  `position_id`, `band_id`, `squad_id`) e `bus` (array de vínculos). Todos os campos opcionais
+  (exceto `bus`) usam `.nullish()` — o cliente pode mandar `null` em vez de omitir; `null` grava
+  `null` na coluna (ver convenção em `../rule.md`).
 - **update** (`updateUserSchema`): `createUserSchema.partial()` — tudo opcional.
 - **bus link** (`busLinkSchema`): `{ bu_id, from_squad? = false }`. **`from_squad` vem do FRONT** —
   é o front que identifica a BU do squad e marca `true`; as demais ficam `false`. A API só persiste,
