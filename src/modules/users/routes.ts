@@ -6,6 +6,8 @@ import { SCOPES } from '../../config/scopes.js';
 export const usersRouter = Router();
 
 usersRouter.get('/users', requireScope(SCOPES.usersRead), controller.list);
+// Fotos em lote por ids. ANTES de /users/:id — senão "photos" casa como :id.
+usersRouter.get('/users/photos', requireScope(SCOPES.usersRead), controller.listPhotos);
 usersRouter.get('/users/:id', requireScope(SCOPES.usersRead), controller.getById);
 usersRouter.post('/users', requireScope(SCOPES.usersWrite), controller.create);
 usersRouter.patch('/users/:id', requireScope(SCOPES.usersWrite), controller.update);

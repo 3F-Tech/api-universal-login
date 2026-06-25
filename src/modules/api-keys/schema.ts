@@ -6,8 +6,9 @@ const id = z.coerce.number().int().positive();
 
 export const apiKeyParamsSchema = z.object({ id });
 
+// Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Filtrar por
+// `system_id` vira ROTA dedicada (ex.: `GET /systems/:id/api-keys`), não param.
 export const listApiKeysQuerySchema = paginationQuerySchema.extend({
-  system_id: id.optional(),
   is_active: z
     .enum(['true', 'false'])
     .transform((v) => v === 'true')

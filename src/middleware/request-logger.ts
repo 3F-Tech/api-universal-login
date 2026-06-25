@@ -27,7 +27,12 @@ function ptLabel(code: number): string {
   return '[ SUCESSO ]';
 }
 
-function prettyMsg(req: { method: string; url: string }, statusCode: number, ms: number | string, systemName?: string): string {
+function prettyMsg(
+  req: { method: string; url: string },
+  statusCode: number,
+  ms: number | string,
+  systemName?: string,
+): string {
   const label = ptLabel(statusCode);
   const lines = [
     '',
@@ -71,12 +76,7 @@ export const requestLogger: RequestHandler = pinoHttp({
     void err;
     if (!env.LOG_PRETTY) return `${req.method} ${req.url} ${res.statusCode}`;
     const r = req as unknown as { system?: { name?: string } };
-    return prettyMsg(
-      req as { method: string; url: string },
-      res.statusCode,
-      '-',
-      r.system?.name,
-    );
+    return prettyMsg(req as { method: string; url: string }, res.statusCode, '-', r.system?.name);
   },
 
   customProps(req) {

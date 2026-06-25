@@ -32,7 +32,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
-| GET | `/api-keys` | `api-keys:read` | Lista (filtros `system_id`, `is_active`; paginado) |
+| GET | `/api-keys` | `api-keys:read` | Lista (filtro `is_active`; paginado) |
 | GET | `/api-keys/types` | `api-keys:read` | Catálogo de tipos disponíveis (pro front montar seletor) |
 | GET | `/api-keys/:id` | `api-keys:read` | Uma key |
 | POST | `/api-keys` | `api-keys:write` | Gera key (retorna a crua **uma vez**) |
@@ -49,7 +49,8 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   (`.nullish()` — aceita `null` = nunca expira).
 - **update** (`updateApiKeySchema`): todos opcionais — `name`, `type`, `is_active`, `expires_at`
   (aceita `null` pra remover a expiração).
-- **list query**: `system_id`, `is_active` (`"true"`/`"false"` → boolean), `page`, `perPage`.
+- **list query**: `is_active` (`"true"`/`"false"` → boolean), `page`, `perPage`. Filtrar por
+  `system_id` não é param (convenção do `CLAUDE.md`) — vira rota dedicada.
 - O enum de tipos vem de `API_KEY_TYPE_NAMES` (derivado do catálogo) — **não** hardcode `['adm','login']`.
 
 ## Service — `service.ts`

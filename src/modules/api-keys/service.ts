@@ -23,7 +23,6 @@ function withType<T extends { scopes: string[] }>(apiKey: T): T & { type: ApiKey
 
 function buildWhere(query: ListApiKeysQuery): Prisma.api_keyWhereInput {
   const where: Prisma.api_keyWhereInput = {};
-  if (query.system_id !== undefined) where.system_id = query.system_id;
   if (query.is_active !== undefined) where.is_active = query.is_active;
   return where;
 }

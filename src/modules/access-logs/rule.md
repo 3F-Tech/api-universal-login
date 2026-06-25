@@ -15,8 +15,8 @@ Todos exigem header `X-API-Key` e o mesmo scope (ver `routes.ts`):
 
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
-| GET | `/systems/:systemId/access-logs` | `access-logs:read` | Logs de um sistema (filtros `user_id`, `success`, `from`, `to`; paginado) |
-| GET | `/users/:userId/access-logs` | `access-logs:read` | Logs de um usuário (filtros `system_id`, `success`, `from`, `to`; paginado) |
+| GET | `/systems/:systemId/access-logs` | `access-logs:read` | Logs de um sistema (paginado) |
+| GET | `/users/:userId/access-logs` | `access-logs:read` | Logs de um usuário (paginado) |
 
 > Só existe o scope `access-logs:read` (`SCOPES.accessLogsRead`). Não há write nem delete — logs
 > são imutáveis pela API.
@@ -25,12 +25,10 @@ Todos exigem header `X-API-Key` e o mesmo scope (ver `routes.ts`):
 
 - **params:** `systemIdParamSchema` (`systemId`) e `userIdParamSchema` (`userId`) — ambos
   `z.coerce.number().int().positive()`.
-- **filtros comuns** (`commonFilters`): `success` (`booleanQueryParam`, opcional), `from` e `to`
-  (`z.coerce.date()`, opcionais) para faixa de datas em `accessed_at`.
-- **system query** (`systemAccessLogsQuerySchema`): `paginationQuerySchema` + filtros comuns +
-  `user_id` opcional (estreita os logs do sistema para um usuário).
-- **user query** (`userAccessLogsQuerySchema`): `paginationQuerySchema` + filtros comuns +
-  `system_id` opcional (estreita os logs do usuário para um sistema).
+- **system query** (`systemAccessLogsQuerySchema`) e **user query** (`userAccessLogsQuerySchema`):
+  ambas são só `paginationQuerySchema`. **Sem filtros como param** (convenção do `CLAUDE.md`): os
+  antigos `success`/`from`/`to`/`user_id`/`system_id` viram rotas dedicadas quando forem necessários.
+  Como `access-logs` não tem coluna `is_active`, aqui sobra só paginação.
 - Tipos exportados: `SystemAccessLogsQuery`, `UserAccessLogsQuery`.
 
 ## Regras de negócio
@@ -41,7 +39,6 @@ Todos exigem header `X-API-Key` e o mesmo scope (ver `routes.ts`):
   `{ user_id } }`), seguindo a convenção do projeto (filtrar por relação, não usar `include` de
   nomes frágeis para filtrar).
 - Ordenação fixa: `accessed_at: 'desc'` (mais recentes primeiro).
-- Faixa de datas opcional: `from` → `gte`, `to` → `lte` (`applyDateRange`).
 
 ## Service — `service.ts`
 

@@ -6,9 +6,9 @@ const id = z.coerce.number().int().positive();
 
 export const bandParamsSchema = z.object({ id });
 
+// Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Busca textual vira rota dedicada.
 export const listBandsQuerySchema = paginationQuerySchema.extend({
   is_active: booleanQueryParam.optional(),
-  q: z.string().trim().min(1).max(100).optional(),
 });
 
 export type ListBandsQuery = z.infer<typeof listBandsQuerySchema>;

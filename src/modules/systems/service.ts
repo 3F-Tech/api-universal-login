@@ -7,7 +7,6 @@ import type { CreateSystemInput, ListSystemsQuery, UpdateSystemInput } from './s
 function buildWhere(query: ListSystemsQuery): Prisma.systemWhereInput {
   const where: Prisma.systemWhereInput = {};
   if (query.is_active !== undefined) where.is_active = query.is_active;
-  if (query.q) where.name = { contains: query.q, mode: 'insensitive' };
   return where;
 }
 
@@ -28,6 +27,10 @@ export async function list(query: ListSystemsQuery) {
  *
  * Usa só campos escalares + filtros `where ... in` (sem include de relação),
  * conforme a convenção do projeto.
+ *
+ * ⚠️ ESTACIONADO: sem chamador desde que o param `?include=bus` foi removido
+ * (convenção de params do CLAUDE.md). Pronto para religar quando virar uma rota
+ * dedicada (ex.: `GET /systems-with-bus`). Não remover.
  */
 export async function listWithBus(query: ListSystemsQuery) {
   const where = buildWhere(query);

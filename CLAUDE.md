@@ -51,6 +51,16 @@ NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHan
   → log `success=true` + retorna o user (sem `password`).
 - **Scopes:** `admin:*` libera tudo; `<recurso>:*` libera o recurso; senão match exato. Catálogo
   em `src/config/scopes.ts`.
+- **Query params = SÓ `is_active` + paginação.** Decisão de arquitetura: a query string de uma
+  listagem carrega **apenas** `is_active` (`"true"`/`"false"`) e `page`/`perPage`. **Todo outro
+  filtro/recorte vira ROTA dedicada**, nunca param. Motivo: rota explícita é descobrível (o front sabe
+  o que existe pelo contrato) e evita endpoints "faz-tudo" parametrizados. Régua: **param seleciona
+  *quais linhas* / *qual página* do mesmo recurso e shape; rota distingue *recurso* ou *shape* de
+  resposta.** Logo: `?bu_id=`, `?q=`, `?include=`, `?success=`, `?from/to=` etc. **não** são params —
+  viram rotas (ex.: `GET /squads/:id/users`, `GET /squads/:id/members`). Quando um filtro precisar
+  voltar, crie a rota e religue a capacidade no service (vários services guardam `buildWhere`/funções
+  **estacionadas** prontas pra isso — ex.: `listWithMemberCount`, `listWithBus`). Não reintroduza
+  filtros como param sem mudar esta decisão aqui.
 
 ## Convenções de código
 

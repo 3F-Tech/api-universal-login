@@ -11,10 +11,7 @@ import { buildMeta } from '../../utils/pagination.js';
 
 export async function list(req: Request, res: Response): Promise<void> {
   const query = listSystemsQuerySchema.parse(req.query);
-  const { data, total } =
-    query.include === 'bus'
-      ? await systemsService.listWithBus(query)
-      : await systemsService.list(query);
+  const { data, total } = await systemsService.list(query);
   sendList(res, data, buildMeta(total, query));
 }
 

@@ -1,26 +1,15 @@
 import { z } from 'zod';
 import { paginationQuerySchema } from '../../utils/pagination.js';
-import { booleanQueryParam } from '../../utils/zod.js';
 
 const id = z.coerce.number().int().positive();
 
 export const systemIdParamSchema = z.object({ systemId: id });
 export const userIdParamSchema = z.object({ userId: id });
 
-const commonFilters = {
-  success: booleanQueryParam.optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
-};
-
-export const systemAccessLogsQuerySchema = paginationQuerySchema.extend({
-  ...commonFilters,
-  user_id: id.optional(),
-});
+// Convenção (CLAUDE.md): query só carrega paginação (access-logs não tem `is_active`).
+// Filtros antigos (success/from/to/user_id/system_id) viram ROTAS dedicadas, não params.
+export const systemAccessLogsQuerySchema = paginationQuerySchema;
 export type SystemAccessLogsQuery = z.infer<typeof systemAccessLogsQuerySchema>;
 
-export const userAccessLogsQuerySchema = paginationQuerySchema.extend({
-  ...commonFilters,
-  system_id: id.optional(),
-});
+export const userAccessLogsQuerySchema = paginationQuerySchema;
 export type UserAccessLogsQuery = z.infer<typeof userAccessLogsQuerySchema>;

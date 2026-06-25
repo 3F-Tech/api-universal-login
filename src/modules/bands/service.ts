@@ -8,7 +8,6 @@ import type { CreateBandInput, ListBandsQuery, UpdateBandInput } from './schema.
 function buildWhere(query: ListBandsQuery): Prisma.bandWhereInput {
   const where: Prisma.bandWhereInput = {};
   if (query.is_active !== undefined) where.is_active = query.is_active;
-  if (query.q) where.name = { contains: query.q, mode: 'insensitive' };
   return where;
 }
 
@@ -35,7 +34,8 @@ export async function getById(id: number) {
 }
 
 export async function create(input: CreateBandInput) {
-  if (input.created_by !== undefined) await assertUserExists(input.created_by, 'CREATED_BY_NOT_FOUND');
+  if (input.created_by !== undefined)
+    await assertUserExists(input.created_by, 'CREATED_BY_NOT_FOUND');
   const data: Prisma.bandUncheckedCreateInput = {
     name: input.name,
     color_hex: input.color_hex,

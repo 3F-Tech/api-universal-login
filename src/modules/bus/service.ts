@@ -12,13 +12,6 @@ export interface BuTreeNode extends bu {
 function buildWhere(query: ListBusQuery): Prisma.buWhereInput {
   const where: Prisma.buWhereInput = {};
   if (query.is_active !== undefined) where.is_active = query.is_active;
-  if (query.parent_id !== undefined) where.parent_id = query.parent_id;
-  if (query.q) {
-    where.OR = [
-      { name: { contains: query.q, mode: 'insensitive' } },
-      { slug: { contains: query.q.toLowerCase() } },
-    ];
-  }
   return where;
 }
 

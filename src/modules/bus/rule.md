@@ -16,7 +16,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
-| GET | `/bus` | `bus:read` | Lista (filtros `is_active`, `parent_id`, `q`; paginado) |
+| GET | `/bus` | `bus:read` | Lista (filtro `is_active`; paginado) |
 | GET | `/bus/tree` | `bus:read` | Árvore hierárquica completa (raízes + `children` aninhados) |
 | GET | `/bus/:id` | `bus:read` | Uma BU |
 | POST | `/bus` | `bus:write` | Cria BU |
@@ -29,10 +29,10 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 ## Schema (Zod) — `schema.ts`
 
 - **params** (`buParamsSchema`): `id` — `z.coerce.number().int().positive()`.
-- **list query** (`listBusQuerySchema`): estende `paginationQuerySchema` (`page`, `perPage`) com:
-  - `is_active` (`"true"`/`"false"` → boolean, opcional),
-  - `parent_id` (id positivo, opcional),
-  - `q` (string 1–100 chars, opcional) — busca textual.
+- **list query** (`listBusQuerySchema`): estende `paginationQuerySchema` (`page`, `perPage`) só com
+  `is_active` (`"true"`/`"false"` → boolean, opcional). **Sem `parent_id` nem busca textual como
+  param** (convenção do `CLAUDE.md`) — viram rotas dedicadas. (`parent_id` continua existindo no
+  **body** de create/update.)
 - **create** (`createBuSchema`):
   - `name` (obrigatório, 1–100 chars, trim);
   - `slug` (obrigatório, 1–100 chars, regex `^[a-z0-9-]+$` — só minúsculas, números e hífens);
@@ -58,9 +58,8 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 ## Service — `service.ts`
 
-- `buildWhere(query)`: monta o `where` da listagem — `is_active` e `parent_id` por igualdade; `q`
-  faz `OR` entre `name` (`contains`, `mode: 'insensitive'`) e `slug` (`contains` sobre
-  `q.toLowerCase()`).
+- `buildWhere(query)`: monta o `where` da listagem só a partir de `is_active` (demais filtros viraram
+  rotas).
 - `list`: `findMany` + `count` em paralelo, `orderBy: { name: 'asc' }`, paginação via `toSkipTake`.
 - `tree`: carrega **todas** as BUs (`orderBy name asc`) e monta a árvore **em memória** — indexa
   por `id` num `Map`, anexa cada nó ao pai (`children`) e devolve as raízes (`parent_id` nulo).
@@ -87,5 +86,3 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 - A árvore é montada **em memória** (carrega a tabela inteira); não há limite/paginação em `/bus/tree`.
 - O anti-ciclo só cobre o caso direto (pai = a própria BU); ciclos indiretos (A→B→A) não são barrados
   no código.
-- A busca por `slug` no filtro `q` aplica `toLowerCase()` no termo (slugs são minúsculos); a busca por
-  `name` é case-insensitive via `mode: 'insensitive'`.

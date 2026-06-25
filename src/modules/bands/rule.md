@@ -15,7 +15,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
-| GET | `/bands` | `bands:read` | Lista (filtros `is_active`, `q`; paginado, ordem natural) |
+| GET | `/bands` | `bands:read` | Lista (filtro `is_active`; paginado, ordem natural) |
 | GET | `/bands/:id` | `bands:read` | Uma band |
 | POST | `/bands` | `bands:write` | Cria |
 | PATCH | `/bands/:id` | `bands:write` | Edita `name`/`color_hex`/`icon`/`sort_order`/`is_active` |
@@ -37,8 +37,8 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   no update** (definido só na criação).
 - **Nullable aceita `null`:** `color_hex` e `icon` usam `.nullish()` (cliente pode mandar `null`).
   `created_by` segue `.optional()` (exigido pela regra de negócio, não aceita `null`). Ver `../rule.md`.
-- **list query** (`listBandsQuerySchema`): estende `paginationQuerySchema` com `is_active`
-  (`booleanQueryParam` → boolean) e `q` (trim, 1–100, busca por nome).
+- **list query** (`listBandsQuerySchema`): estende `paginationQuerySchema` só com `is_active`
+  (`booleanQueryParam` → boolean). Busca por nome não é param (convenção do `CLAUDE.md`) — vira rota.
 
 ## Regras de negócio
 
@@ -52,8 +52,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 ## Service — `service.ts`
 
-- `buildWhere`: filtra por `is_active` quando definido e por `q` (`name contains`, `mode:
-  'insensitive'`).
+- `buildWhere`: filtra só por `is_active` quando definido.
 - `list`: `findMany` + `count` em paralelo; `orderBy: [{ sort_order: 'asc' }, { name: 'asc' }]`;
   paginação via `toSkipTake`.
 - `getById`: `findUnique`; se não achar → `NotFoundError` com `code: 'BAND_NOT_FOUND'`.

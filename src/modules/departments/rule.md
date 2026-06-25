@@ -14,7 +14,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
-| GET | `/departments` | `departments:read` | Lista (filtros `is_active`, `q`; paginado) |
+| GET | `/departments` | `departments:read` | Lista (filtro `is_active`; paginado) |
 | GET | `/departments/:id` | `departments:read` | Um departamento |
 | POST | `/departments` | `departments:write` | Cria |
 | PATCH | `/departments/:id` | `departments:write` | Edita `name`/`icon`/`is_active` |
@@ -28,8 +28,8 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   opcional no Zod; **não** aceita `null`).
 - **update** (`updateDepartmentSchema`): `name`, `icon` (`.nullish()`), `is_active` — todos opcionais.
   **`created_by` não é alterável via update** (definido só na criação; ver comentário no schema).
-- **list query** (`listDepartmentsQuerySchema`): estende `paginationQuerySchema` com `is_active`
-  (`booleanQueryParam` → boolean) e `q` (trim, 1–100, busca por nome).
+- **list query** (`listDepartmentsQuerySchema`): estende `paginationQuerySchema` só com `is_active`
+  (`booleanQueryParam` → boolean). Busca por nome não é param (convenção do `CLAUDE.md`) — vira rota.
 
 ## Regras de negócio
 
@@ -41,8 +41,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 ## Service — `service.ts`
 
-- `buildWhere`: filtra por `is_active` quando definido e por `q` (`name contains`, `mode:
-  'insensitive'`).
+- `buildWhere`: filtra só por `is_active` quando definido.
 - `list`: `findMany` + `count` em paralelo; `orderBy: { name: 'asc' }`; paginação via `toSkipTake`.
 - `getById`: `findUnique`; se não achar → `NotFoundError` com `code: 'DEPARTMENT_NOT_FOUND'`.
 - `create`: se `created_by` veio, valida com `assertUserExists(input.created_by,

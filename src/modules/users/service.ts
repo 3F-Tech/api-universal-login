@@ -3,11 +3,28 @@ import { prisma } from '../../config/database.js';
 import { hashPassword } from '../../utils/bcrypt.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { assertBuExists } from '../../utils/references.js';
-import { toSkipTake } from '../../utils/pagination.js';
-import type { CreateUserInput, ListUsersQuery, UpdateUserInput } from './schema.js';
+import { toSkipTake, type PaginationQuery } from '../../utils/pagination.js';
+import type { CreateUserInput, UpdateUserInput } from './schema.js';
+
+/**
+ * Filtros INTERNOS do service — desacoplados da query pública. A rota `GET /users`
+ * só expõe `is_active` + paginação (convenção de params do CLAUDE.md), mas o service
+ * mantém a capacidade de filtrar por `squad_id` porque a ROTA `GET /squads/:id/users`
+ * delega para cá. Novos filtros (bu_id, etc.) entram aqui quando virarem rotas.
+ */
+export type UserListFilters = PaginationQuery & {
+  is_active?: boolean;
+  squad_id?: number;
+};
 
 // Nunca devolvemos o hash da senha nas respostas.
 const SAFE_OMIT = { password: true } as const;
+
+// Na LISTAGEM omitimos TAMBÉM profile_picture: são imagens base64 (média ~1,6 MB,
+// chegando a 2,5 MB) que sozinhas levavam o GET /users a ~5,5 s. O front busca as
+// fotos da página visível à parte, via GET /users/photos?ids=... (listPhotos).
+// getById/create/update continuam com SAFE_OMIT (a tela de detalhe quer a foto).
+const LIST_OMIT = { password: true, profile_picture: true } as const;
 
 /** Tipo do client dentro de uma transação (mesma superfície do prisma global). */
 type TxClient = Prisma.TransactionClient;
@@ -32,18 +49,29 @@ async function fetchUserBus(client: TxClient, userId: number) {
 }
 
 /**
- * BUs de VÁRIOS usuários numa única query (evita N+1 na listagem). Retorna um
- * Map user_id → BUs[] (cada BU com from_squad).
+ * BUs de VÁRIOS usuários em exatamente 2 queries (evita N+1 na listagem).
+ * Não usa relação no select: com adapter-pg o Prisma dispara uma query por
+ * linha de users_bus ao resolver a FK bu_id → bu, o que causava ~50 round-trips.
  */
 async function fetchBusByUser(userIds: number[]) {
   if (userIds.length === 0) return new Map<number, Awaited<ReturnType<typeof fetchUserBus>>>();
+
+  // Query 1: vínculos (só campos escalares — sem relação)
   const links = await prisma.users_bus.findMany({
     where: { user_id: { in: userIds } },
-    select: { user_id: true, from_squad: true, bu: true },
+    select: { user_id: true, bu_id: true, from_squad: true },
     orderBy: { bu_id: 'asc' },
   });
+
+  // Query 2: BUs únicas em batch
+  const buIds = [...new Set(links.map((l) => l.bu_id))];
+  const bus = buIds.length ? await prisma.bu.findMany({ where: { id: { in: buIds } } }) : [];
+  const buMap = new Map(bus.map((b) => [b.id, b]));
+
   const map = new Map<number, Awaited<ReturnType<typeof fetchUserBus>>>();
-  for (const { user_id, bu, from_squad } of links) {
+  for (const { user_id, bu_id, from_squad } of links) {
+    const bu = buMap.get(bu_id);
+    if (!bu) continue;
     const arr = map.get(user_id) ?? [];
     arr.push({ ...bu, from_squad });
     map.set(user_id, arr);
@@ -51,26 +79,18 @@ async function fetchBusByUser(userIds: number[]) {
   return map;
 }
 
-function buildWhere(query: ListUsersQuery): Prisma.userWhereInput {
+function buildWhere(query: UserListFilters): Prisma.userWhereInput {
   const where: Prisma.userWhereInput = {};
   if (query.is_active !== undefined) where.is_active = query.is_active;
-  // bu_id agora é N:N — filtra usuários vinculados àquela BU via pivot.
-  if (query.bu_id !== undefined) where.users_bus = { some: { bu_id: query.bu_id } };
+  // squad_id não é param público: vem da rota GET /squads/:id/users (delegação).
   if (query.squad_id !== undefined) where.squad_id = query.squad_id;
-  if (query.department_id !== undefined) where.department_id = query.department_id;
-  if (query.q) {
-    where.OR = [
-      { name: { contains: query.q, mode: 'insensitive' } },
-      { email: { contains: query.q.toLowerCase() } },
-    ];
-  }
   return where;
 }
 
-export async function list(query: ListUsersQuery) {
+export async function list(query: UserListFilters) {
   const where = buildWhere(query);
   const [users, total] = await Promise.all([
-    prisma.user.findMany({ where, omit: SAFE_OMIT, orderBy: { id: 'asc' }, ...toSkipTake(query) }),
+    prisma.user.findMany({ where, omit: LIST_OMIT, orderBy: { id: 'asc' }, ...toSkipTake(query) }),
     prisma.user.count({ where }),
   ]);
 
@@ -79,6 +99,25 @@ export async function list(query: ListUsersQuery) {
   const data = users.map((u) => ({ ...u, bus: busByUser.get(u.id) ?? [] }));
 
   return { data, total };
+}
+
+/**
+ * Fotos de perfil em lote, por ids. Devolve um mapa `{ [id]: profile_picture }`
+ * só com os usuários que existem (a foto em si pode ser `null`). Ids inexistentes
+ * simplesmente não aparecem no mapa. Uma query, sem N+1.
+ *
+ * Contrapartida do LIST_OMIT: a lista vem leve e rápida; as fotos chegam aqui,
+ * sob demanda, para a página visível ou para os resultados de uma busca.
+ */
+export async function listPhotos(ids: number[]): Promise<Record<number, string | null>> {
+  if (ids.length === 0) return {};
+  const rows = await prisma.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, profile_picture: true },
+  });
+  const map: Record<number, string | null> = {};
+  for (const r of rows) map[r.id] = r.profile_picture;
+  return map;
 }
 
 export async function getById(id: number) {

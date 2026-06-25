@@ -13,8 +13,10 @@ import { logger } from '../utils/logger.js';
 const adapter = new PrismaPg(
   {
     connectionString: env.DATABASE_URL,
-    // Mantém até 10 conexões abertas.
-    max: 10,
+    // Pool generoso: burst típico de ~14 queries concorrentes (6 rotas × 2
+    // paralelas + API key dedup + 1 background update). Com max: 10 o pool
+    // saturava e enfileirava queries, causando latência em cascata.
+    max: 25,
     // 10 min: muito acima do default de 10s do pg. Evita fechar conexões
     // no meio de períodos curtos de inatividade (o default de 10s é a causa
     // principal do cold start de ~3s após breve inatividade).

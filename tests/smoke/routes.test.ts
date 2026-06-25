@@ -8,10 +8,12 @@ import { api } from '../helpers/app.js';
  */
 const routes = [
   { method: 'get', path: '/users' }, // users
+  { method: 'get', path: '/users/photos?ids=1' }, // users (fotos em lote)
   { method: 'post', path: '/auth/validate' }, // auth
   { method: 'get', path: '/api-keys' }, // api-keys
   { method: 'get', path: '/bus' }, // bus
   { method: 'get', path: '/squads' }, // squads
+  { method: 'get', path: '/squads/1/members' }, // squads (membros enxutos)
   { method: 'get', path: '/departments' }, // departments
   { method: 'get', path: '/positions' }, // positions
   { method: 'get', path: '/bands' }, // bands

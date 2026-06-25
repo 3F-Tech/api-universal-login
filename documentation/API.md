@@ -98,6 +98,13 @@ e o super-scope `admin:*`.
 
 Vale para todos os endpoints de **lista** (os marcados com `meta`).
 
+### Filtros (query string)
+
+Por convenção, a query string de uma listagem carrega **apenas** `is_active` (`true`/`false`, onde o
+recurso tem essa coluna), além da paginação. **Qualquer outro recorte** (por relação, busca textual,
+embute de dados, intervalo de datas) é exposto como **rota dedicada**, nunca como param. Params
+desconhecidos enviados na query são **ignorados** (não geram erro).
+
 ---
 
 ## 4. Erros
@@ -207,16 +214,32 @@ Valida e-mail + senha do usuário **no contexto do sistema da API Key** e regist
 | Método | Rota | Scope |
 |---|---|---|
 | `GET` | `/users` | `users:read` |
+| `GET` | `/users/photos` | `users:read` |
 | `GET` | `/users/:id` | `users:read` |
 | `POST` | `/users` | `users:write` |
 | `PATCH` | `/users/:id` | `users:write` |
 | `DELETE` | `/users/:id` | `users:delete` |
 
-**`GET /users`** — filtros (query): `page`, `perPage`, `is_active` (`true`/`false`),
-`bu_id`, `squad_id`, `department_id`, `q` (busca por nome ou e-mail). Cada item vem **sem
-`password`** e com `bus: [...]` (BUs do usuário, cada uma com `from_squad`).
+**`GET /users`** — query: só `page`, `perPage`, `is_active` (`true`/`false`). Filtros antigos
+(`bu_id`, `squad_id`, `department_id`, busca textual) viraram rotas dedicadas. Cada item vem **sem
+`password`** e **sem `profile_picture`** (a foto é base64 pesada e travava a lista — ver
+`GET /users/photos`), com `bus: [...]` (BUs do usuário, cada uma com `from_squad`).
 
-**`GET /users/:id`** → item único + `bus`. 404 `USER_NOT_FOUND`.
+**`GET /users/photos`** — fotos de perfil **em lote**, para a lista exibir avatares sem carregar
+base64 no `GET /users`. Query: `ids` = inteiros positivos separados por vírgula (`?ids=1,2,3`),
+**deduplicado** e **limitado a 50 ids** por requisição. Responde um **mapa** `{ <id>: profile_picture }`
+só com os ids que existem (a foto pode ser `null`); ids inexistentes são omitidos. Ex.: `?ids=10,15` →
+
+```json
+{ "data": { "10": "data:image/jpeg;base64,...", "15": null } }
+```
+
+Manda `Cache-Control: private, max-age=300` (foto muda raramente). Fluxo recomendado: o front
+renderiza os cards leves do `GET /users` e **depois** chama esta rota com os ids da página visível
+(ou dos resultados de uma busca) — uma requisição cacheável, não uma por usuário. 400 se `ids`
+faltar, tiver valor não-inteiro/≤0, ou passar de 50.
+
+**`GET /users/:id`** → item único + `bus`, **com `profile_picture`**. 404 `USER_NOT_FOUND`.
 
 **`POST /users`** → `201`. Body:
 
@@ -239,7 +262,7 @@ Valida e-mail + senha do usuário **no contexto do sistema da API Key** e regist
 | `band_id` | int | — | FK |
 | `squad_id` | int | — | FK |
 | `bus` | array | — | `[{ "bu_id": int, "from_squad": bool=false }]` — grava os vínculos N:N |
-| `profile_picture` | string | — | URL / caminho / base64 |
+| `profile_picture` | string | — | imagem base64 (data URI) ou URL; **não** volta no `GET /users` — só em `/users/:id` e `/users/photos` |
 | `cep`,`street`,`street_number`,`neighborhood`,`complement`,`city`,`state`,`country` | string | — | endereço (tamanhos variados) |
 | `is_active` | bool | — | default no banco = `true` |
 
@@ -267,8 +290,8 @@ e respectivos `systems_users_access`.
 | `PATCH` | `/api-keys/:id` | `api-keys:write` |
 | `DELETE` | `/api-keys/:id` | `api-keys:delete` |
 
-**`GET /api-keys`** — filtros: `page`, `perPage`, `system_id`, `is_active`. Itens **sem `key_hash`**,
-com `type` derivado dos scopes (`adm` | `login` | `null`).
+**`GET /api-keys`** — query: só `page`, `perPage`, `is_active` (o filtro por `system_id` virou rota).
+Itens **sem `key_hash`**, com `type` derivado dos scopes (`adm` | `login` | `null`).
 
 **`GET /api-keys/types`** — catálogo de tipos para montar seletor:
 ```json
@@ -318,7 +341,8 @@ Resposta **inclui a key crua uma única vez**:
 | `PATCH` | `/bus/:id` | `bus:write` |
 | `DELETE` | `/bus/:id` | `bus:delete` |
 
-**`GET /bus`** — filtros: `page`, `perPage`, `is_active`, `parent_id`, `q` (nome ou slug).
+**`GET /bus`** — query: só `page`, `perPage`, `is_active` (filtro por `parent_id` e busca por
+nome/slug viraram rotas).
 
 **`GET /bus/tree`** — árvore hierárquica completa (item único, **não paginado**). Raízes têm
 `parent_id = null`; cada nó tem `children: [...]` recursivo:
@@ -358,7 +382,8 @@ Resposta **inclui a key crua uma única vez**:
 | `PATCH` | `/squads/:id` | `squads:write` |
 | `DELETE` | `/squads/:id` | `squads:delete` |
 
-**`GET /squads`** — filtros: `page`, `perPage`, `is_active`, `bu_id`, `leader_id`, `q` (nome).
+**`GET /squads`** — query: só `page`, `perPage`, `is_active` (filtros por `bu_id`/`leader_id`/busca
+viraram rotas).
 
 **`GET /squads/:id`** → item. 404 `SQUAD_NOT_FOUND`.
 
@@ -393,7 +418,7 @@ Resposta **inclui a key crua uma única vez**:
 | `PATCH` | `/departments/:id` | `departments:write` |
 | `DELETE` | `/departments/:id` | `departments:delete` |
 
-**`GET /departments`** — filtros: `page`, `perPage`, `is_active`, `q` (nome).
+**`GET /departments`** — query: só `page`, `perPage`, `is_active` (busca por nome virou rota).
 **`GET /departments/:id`** → 404 `DEPARTMENT_NOT_FOUND`.
 
 **`POST /departments`** → `201`. Body:
@@ -420,7 +445,7 @@ Resposta **inclui a key crua uma única vez**:
 | `PATCH` | `/positions/:id` | `positions:write` |
 | `DELETE` | `/positions/:id` | `positions:delete` |
 
-**`GET /positions`** — filtros: `page`, `perPage`, `is_active`, `q` (nome).
+**`GET /positions`** — query: só `page`, `perPage`, `is_active` (busca por nome virou rota).
 **`GET /positions/:id`** → 404 `POSITION_NOT_FOUND`.
 
 **`POST /positions`** → `201`. Body: `name` (✅, 1–100), `is_active?`, `created_by?`
@@ -440,8 +465,8 @@ Resposta **inclui a key crua uma única vez**:
 | `PATCH` | `/bands/:id` | `bands:write` |
 | `DELETE` | `/bands/:id` | `bands:delete` |
 
-**`GET /bands`** — filtros: `page`, `perPage`, `is_active`, `q` (nome). Ordenado por `sort_order`,
-depois `name`.
+**`GET /bands`** — query: só `page`, `perPage`, `is_active` (busca por nome virou rota). Ordenado por
+`sort_order`, depois `name`.
 **`GET /bands/:id`** → 404 `BAND_NOT_FOUND`.
 
 **`POST /bands`** → `201`. Body:
@@ -470,8 +495,8 @@ depois `name`.
 | `PATCH` | `/systems/:id` | `systems:write` |
 | `DELETE` | `/systems/:id` | `systems:delete` |
 
-**`GET /systems`** — filtros: `page`, `perPage`, `is_active`, `q` (nome),
-`include=bus` (embute `bus: [...]` em cada sistema, sem N+1).
+**`GET /systems`** — query: só `page`, `perPage`, `is_active` (busca por nome e o embute `include=bus`
+viraram rotas).
 **`GET /systems/:id`** → 404 `SYSTEM_NOT_FOUND`.
 
 **`POST /systems`** → `201`. Body:
@@ -565,11 +590,11 @@ Leitura dos logs de acesso (`systems_users_access`). Somente leitura — os logs
 | `GET` | `/systems/:systemId/access-logs` | `access-logs:read` |
 | `GET` | `/users/:userId/access-logs` | `access-logs:read` |
 
-**`GET /systems/:systemId/access-logs`** — filtros: `page`, `perPage`, `success` (`true`/`false`),
-`from` (date), `to` (date), `user_id`. Valida sistema (404 `SYSTEM_NOT_FOUND`).
+**`GET /systems/:systemId/access-logs`** — query: só `page`, `perPage` (filtros `success`/`from`/`to`/
+`user_id` viraram rotas; `access-logs` não tem `is_active`). Valida sistema (404 `SYSTEM_NOT_FOUND`).
 
-**`GET /users/:userId/access-logs`** — filtros: `page`, `perPage`, `success`, `from`, `to`,
-`system_id`. Valida usuário (404 `USER_NOT_FOUND`).
+**`GET /users/:userId/access-logs`** — query: só `page`, `perPage` (filtros `success`/`from`/`to`/
+`system_id` viraram rotas). Valida usuário (404 `USER_NOT_FOUND`).
 
 Ambos ordenados por `accessed_at` desc. Item:
 ```json
@@ -591,7 +616,7 @@ Ambos ordenados por `accessed_at` desc. Item:
 |---|---|---|
 | `GET` | `/health`, `/health/ready` | *(sem auth)* |
 | `POST` | `/auth/validate` | `auth:validate` |
-| `GET` | `/users` · `/users/:id` | `users:read` |
+| `GET` | `/users` · `/users/photos` · `/users/:id` | `users:read` |
 | `POST` | `/users` | `users:write` |
 | `PATCH` | `/users/:id` | `users:write` |
 | `DELETE` | `/users/:id` | `users:delete` |
@@ -611,7 +636,7 @@ Ambos ordenados por `accessed_at` desc. Item:
 | `GET/POST/PATCH/DELETE` | `/departments[/:id]` | `departments:{read,write,delete}` |
 | `GET/POST/PATCH/DELETE` | `/positions[/:id]` | `positions:{read,write,delete}` |
 | `GET/POST/PATCH/DELETE` | `/bands[/:id]` | `bands:{read,write,delete}` |
-| `GET` | `/systems[?include=bus]` · `/systems/:id` | `systems:read` |
+| `GET` | `/systems` · `/systems/:id` | `systems:read` |
 | `POST/PATCH/DELETE` | `/systems[/:id]` | `systems:{write,delete}` |
 | `GET` | `/systems/:systemId/users` · `/users/:userId/systems` | `systems-users:read` |
 | `POST` | `/systems/:systemId/users` | `systems-users:write` |

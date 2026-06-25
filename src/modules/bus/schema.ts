@@ -10,10 +10,10 @@ const hexColor = z
 
 export const buParamsSchema = z.object({ id });
 
+// Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Filtro por
+// `parent_id` e busca textual viram ROTAS dedicadas, não params.
 export const listBusQuerySchema = paginationQuerySchema.extend({
   is_active: booleanQueryParam.optional(),
-  parent_id: id.optional(),
-  q: z.string().trim().min(1).max(100).optional(),
 });
 
 export type ListBusQuery = z.infer<typeof listBusQuerySchema>;

@@ -14,7 +14,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
-| GET | `/positions` | `positions:read` | Lista (filtros `is_active`, `q`; paginado) |
+| GET | `/positions` | `positions:read` | Lista (filtro `is_active`; paginado) |
 | GET | `/positions/:id` | `positions:read` | Um cargo |
 | POST | `/positions` | `positions:write` | Cria |
 | PATCH | `/positions/:id` | `positions:write` | Edita `name`/`is_active` |
@@ -27,8 +27,8 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   opcional), `created_by` (id positivo, opcional no Zod).
 - **update** (`updatePositionSchema`): `name`, `is_active` — ambos opcionais. **`created_by` não está
   no update** (definido só na criação).
-- **list query** (`listPositionsQuerySchema`): estende `paginationQuerySchema` com `is_active`
-  (`booleanQueryParam` → boolean) e `q` (trim, 1–100, busca por nome).
+- **list query** (`listPositionsQuerySchema`): estende `paginationQuerySchema` só com `is_active`
+  (`booleanQueryParam` → boolean). Busca por nome não é param (convenção do `CLAUDE.md`) — vira rota.
 
 ## Regras de negócio
 
@@ -40,8 +40,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 ## Service — `service.ts`
 
-- `buildWhere`: filtra por `is_active` quando definido e por `q` (`name contains`, `mode:
-  'insensitive'`).
+- `buildWhere`: filtra só por `is_active` quando definido.
 - `list`: `findMany` + `count` em paralelo; `orderBy: { name: 'asc' }`; paginação via `toSkipTake`.
 - `getById`: `findUnique`; se não achar → `NotFoundError` com `code: 'POSITION_NOT_FOUND'`.
 - `create`: se `created_by` veio, valida com `assertUserExists(input.created_by,

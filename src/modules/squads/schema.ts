@@ -6,11 +6,10 @@ const id = z.coerce.number().int().positive();
 
 export const squadParamsSchema = z.object({ id });
 
+// Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Filtros
+// (bu_id/leader_id/busca) e a contagem de membros viram ROTAS dedicadas, não params.
 export const listSquadsQuerySchema = paginationQuerySchema.extend({
   is_active: booleanQueryParam.optional(),
-  bu_id: id.optional(),
-  leader_id: id.optional(),
-  q: z.string().trim().min(1).max(150).optional(),
 });
 
 export type ListSquadsQuery = z.infer<typeof listSquadsQuerySchema>;

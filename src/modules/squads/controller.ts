@@ -27,6 +27,13 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
   sendList(res, data, buildMeta(total, query));
 }
 
+export async function listMembers(req: Request, res: Response): Promise<void> {
+  const { id } = squadParamsSchema.parse(req.params);
+  const query = paginationQuerySchema.parse(req.query);
+  const { data, total } = await squadsService.listMembers(id, query);
+  sendList(res, data, buildMeta(total, query));
+}
+
 export async function create(req: Request, res: Response): Promise<void> {
   const input = createSquadSchema.parse(req.body);
   sendItem(res, await squadsService.create(input), 201);

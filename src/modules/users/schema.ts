@@ -2,25 +2,58 @@ import { z } from 'zod';
 import { paginationQuerySchema } from '../../utils/pagination.js';
 
 const id = z.coerce.number().int().positive();
-const optionalId = id.optional();
 // FKs nullable no banco: aceitam null (limpar o vínculo) ou ausência.
 const nullableId = id.nullish();
 
 export const userParamsSchema = z.object({ id });
 
+// Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Filtros como
+// bu_id/squad_id/department_id/busca textual viram ROTAS dedicadas, não params.
 export const listUsersQuerySchema = paginationQuerySchema.extend({
   is_active: z
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
-  bu_id: optionalId,
-  squad_id: optionalId,
-  department_id: optionalId,
-  // Busca textual por nome ou email.
-  q: z.string().trim().min(1).max(150).optional(),
 });
 
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
+
+/**
+ * Rota de fotos em lote: `GET /users/photos?ids=1,2,3`.
+ *
+ * A listagem `/users` deixou de mandar `profile_picture` (base64 de ~1,6 MB
+ * médio travava a lista em ~5,5 s). O front renderiza os cards leves e, depois,
+ * busca as fotos só da página visível (ou dos resultados de uma busca) numa
+ * ÚNICA requisição cacheável — em vez de 1 request por usuário (que estouraria
+ * o rate limit de 100/min por API Key).
+ *
+ * `ids` vem como CSV na query (`?ids=1,2,3`), é deduplicado e limitado a
+ * MAX_PHOTO_IDS por requisição (bound no payload).
+ */
+export const MAX_PHOTO_IDS = 50;
+
+export const userPhotosQuerySchema = z.object({
+  ids: z
+    .string()
+    .transform((s) =>
+      s
+        .split(',')
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0),
+    )
+    // Valida como string (input/output do pipe = string[]; evita o input `unknown`
+    // de z.coerce que quebra a inferência do .pipe no Zod v4). Converte pra número
+    // e deduplica no transform final.
+    .pipe(
+      z
+        .array(z.string().regex(/^[1-9]\d*$/, 'ids devem ser inteiros positivos.'))
+        .min(1, 'Informe ao menos um id em ?ids=.')
+        .max(MAX_PHOTO_IDS, `Máximo de ${MAX_PHOTO_IDS} ids por requisição.`),
+    )
+    .transform((arr) => [...new Set(arr.map(Number))]),
+});
+
+export type UserPhotosQuery = z.infer<typeof userPhotosQuerySchema>;
 
 /**
  * Vínculo usuário↔BU (pivot users_bus). `from_squad` vem do FRONT: é o front que

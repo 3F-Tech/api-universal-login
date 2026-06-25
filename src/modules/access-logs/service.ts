@@ -23,27 +23,12 @@ function serialize(row: AccessLogRow) {
   };
 }
 
-function applyDateRange(
-  where: Prisma.systems_users_accessWhereInput,
-  from?: Date,
-  to?: Date,
-): void {
-  if (from || to) {
-    where.accessed_at = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
-  }
-}
-
 export async function listSystemAccessLogs(systemId: number, query: SystemAccessLogsQuery) {
   await assertSystemExists(systemId);
 
   const where: Prisma.systems_users_accessWhereInput = {
-    systems_users: {
-      system_id: systemId,
-      ...(query.user_id !== undefined ? { user_id: query.user_id } : {}),
-    },
+    systems_users: { system_id: systemId },
   };
-  if (query.success !== undefined) where.success = query.success;
-  applyDateRange(where, query.from, query.to);
 
   const [rows, total] = await Promise.all([
     prisma.systems_users_access.findMany({
@@ -61,13 +46,8 @@ export async function listUserAccessLogs(userId: number, query: UserAccessLogsQu
   await assertUserExists(userId);
 
   const where: Prisma.systems_users_accessWhereInput = {
-    systems_users: {
-      user_id: userId,
-      ...(query.system_id !== undefined ? { system_id: query.system_id } : {}),
-    },
+    systems_users: { user_id: userId },
   };
-  if (query.success !== undefined) where.success = query.success;
-  applyDateRange(where, query.from, query.to);
 
   const [rows, total] = await Promise.all([
     prisma.systems_users_access.findMany({

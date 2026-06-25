@@ -6,11 +6,10 @@ const id = z.coerce.number().int().positive();
 
 export const systemParamsSchema = z.object({ id });
 
+// Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Busca textual e
+// o embute de BUs (`?include=bus`) viram ROTAS dedicadas, não params.
 export const listSystemsQuerySchema = paginationQuerySchema.extend({
   is_active: booleanQueryParam.optional(),
-  q: z.string().trim().min(1).max(150).optional(),
-  // ?include=bus → embute as BUs de cada sistema na resposta (evita N+1 no front).
-  include: z.enum(['bus']).optional(),
 });
 
 export type ListSystemsQuery = z.infer<typeof listSystemsQuerySchema>;
