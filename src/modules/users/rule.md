@@ -15,6 +15,7 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 | GET | `/users` | `users:read` | Lista **LEVE** (sem `profile_picture`) + `bus`; só `is_active` + paginação |
 | GET | `/users/photos` | `users:read` | **Fotos em lote**: `?ids=1,2,3` → mapa `{ id: profile_picture }` |
 | GET | `/users/:id` | `users:read` | Um usuário (+ `bus`, **com** `profile_picture`) |
+| GET | `/users/:id/led` | `users:read` | **Liderados** por `:id` (via `leader_id`) — lista leve, sem foto |
 | POST | `/users` | `users:write` | Cria usuário (+ vínculos de BU opcionais) |
 | PATCH | `/users/:id` | `users:write` | Atualiza (campos parciais; pode substituir `bus`) |
 | DELETE | `/users/:id` | `users:delete` | **Hard delete** (vínculos `users_bus` caem por CASCADE) |
@@ -23,7 +24,7 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 
 - **create** (`createUserSchema`): obrigatórios `name`, `email` (lowercase), `password` (8–72),
   `role`. Opcionais: dados pessoais (cpf, cnpj, phone, instagram…), endereço, FKs (`department_id`,
-  `position_id`, `band_id`, `squad_id`) e `bus` (array de vínculos). Todos os campos opcionais
+  `position_id`, `band_id`, `squad_id`, `leader_id`) e `bus` (array de vínculos). Todos os campos opcionais
   (exceto `bus`) usam `.nullish()` — o cliente pode mandar `null` em vez de omitir; `null` grava
   `null` na coluna (ver convenção em `../rule.md`).
 - **update** (`updateUserSchema`): `createUserSchema.partial()` — tudo opcional.
@@ -32,7 +33,8 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   **não** sincroniza com `squad.bu_id`.
 - **list query** (`listUsersQuerySchema`): só `is_active` + `page`/`perPage` (convenção de params do
   CLAUDE.md). Os filtros antigos (`bu_id`, `q`, `department_id`) viraram/virarão rotas dedicadas; o
-  `squad_id` sobrevive como filtro **interno** (`UserListFilters`), usado pela rota `GET /squads/:id/users`.
+  `squad_id` e `leader_id` sobrevivem como filtros **internos** (`UserListFilters`), usados pelas
+  rotas `GET /squads/:id/users` e `GET /users/:id/led`.
 - **photos query** (`userPhotosQuerySchema`): `ids` = CSV de inteiros positivos na query
   (`?ids=1,2,3`), **deduplicado** e limitado a **`MAX_PHOTO_IDS` (50)** por requisição.
 
@@ -44,6 +46,10 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   - Sempre **deduplicados** por `bu_id` (último vence) via `normalizeBus`, pra não violar o
     `UNIQUE (user_id, bu_id)`.
   - Cada `bu_id` é validado antes (`assertBuExists`) → `404` limpo em vez de `P2003` cru.
+- **Líder (`leader_id`):** FK auto-referente (aponta para outro `user`). Opcional/nullable —
+  omitir ou mandar `null` deixa/limpa sem líder. Se informado, é validado antes (`assertUserExists`
+  → 404 `LEADER_NOT_FOUND`). No **update** não pode ser o próprio `id` (400 `INVALID_LEADER`).
+  Guarda só o auto-ciclo **direto** (igual ao `parent_id` de BU) — não detecta ciclos A→B→A.
 - **Senha:** hasheada com bcrypt no create e, no update, só se `password` vier preenchido.
 - **Escrita transacional:** create/update usam `prisma.$transaction` — usuário + vínculos numa só
   unidade.
@@ -58,6 +64,8 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   query por linha — era um dos gargalos da listagem.
 - `listPhotos(ids[])` — fotos em lote numa query (`id IN (...)`), devolve mapa `{ id → profile_picture }`
   (só ids existentes; foto pode ser `null`).
+- `listLed(leaderId, query)` — valida o líder e delega para `list` filtrando por `leader_id`
+  (rota `GET /users/:id/led`); resposta leve idêntica ao `GET /users` (sem foto, com `bus`).
 - `list` embute `bus` em cada usuário via o Map acima; `getById`/`create`/`update` via `fetchUserBus`.
 - `remove` = hard delete (vínculos somem por `ON DELETE CASCADE`).
 

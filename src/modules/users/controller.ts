@@ -31,6 +31,13 @@ export async function getById(req: Request, res: Response): Promise<void> {
   sendItem(res, await usersService.getById(id));
 }
 
+export async function listLed(req: Request, res: Response): Promise<void> {
+  const { id } = userParamsSchema.parse(req.params);
+  const query = listUsersQuerySchema.parse(req.query);
+  const { data, total } = await usersService.listLed(id, query);
+  sendList(res, data, buildMeta(total, query));
+}
+
 export async function create(req: Request, res: Response): Promise<void> {
   const input = createUserSchema.parse(req.body);
   sendItem(res, await usersService.create(input), 201);

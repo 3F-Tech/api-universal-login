@@ -1,20 +1,21 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { hashPassword } from '../../utils/bcrypt.js';
-import { NotFoundError } from '../../utils/errors.js';
-import { assertBuExists } from '../../utils/references.js';
+import { NotFoundError, ValidationError } from '../../utils/errors.js';
+import { assertBuExists, assertUserExists } from '../../utils/references.js';
 import { toSkipTake, type PaginationQuery } from '../../utils/pagination.js';
-import type { CreateUserInput, UpdateUserInput } from './schema.js';
+import type { CreateUserInput, ListUsersQuery, UpdateUserInput } from './schema.js';
 
 /**
  * Filtros INTERNOS do service — desacoplados da query pública. A rota `GET /users`
  * só expõe `is_active` + paginação (convenção de params do CLAUDE.md), mas o service
- * mantém a capacidade de filtrar por `squad_id` porque a ROTA `GET /squads/:id/users`
- * delega para cá. Novos filtros (bu_id, etc.) entram aqui quando virarem rotas.
+ * mantém filtros por `squad_id` e `leader_id` porque as ROTAS `GET /squads/:id/users`
+ * e `GET /users/:id/led` delegam para cá. Novos filtros entram aqui quando viram rotas.
  */
 export type UserListFilters = PaginationQuery & {
   is_active?: boolean;
   squad_id?: number;
+  leader_id?: number;
 };
 
 // Nunca devolvemos o hash da senha nas respostas.
@@ -82,8 +83,10 @@ async function fetchBusByUser(userIds: number[]) {
 function buildWhere(query: UserListFilters): Prisma.userWhereInput {
   const where: Prisma.userWhereInput = {};
   if (query.is_active !== undefined) where.is_active = query.is_active;
-  // squad_id não é param público: vem da rota GET /squads/:id/users (delegação).
+  // squad_id e leader_id não são params públicos: vêm de rotas dedicadas
+  // (GET /squads/:id/users e GET /users/:id/led) por delegação.
   if (query.squad_id !== undefined) where.squad_id = query.squad_id;
+  if (query.leader_id !== undefined) where.leader_id = query.leader_id;
   return where;
 }
 
@@ -120,6 +123,17 @@ export async function listPhotos(ids: number[]): Promise<Record<number, string |
   return map;
 }
 
+/**
+ * Usuários LIDERADOS por um usuário (filtra por `user.leader_id`). Valida o líder
+ * (404 limpo) e delega para `list` — então já vem paginado, LEVE (sem
+ * `profile_picture`) e com `bus` embutido, idêntico ao `GET /users`. As fotos
+ * vêm à parte por `GET /users/photos?ids=...`, no mesmo fluxo da listagem.
+ */
+export async function listLed(leaderId: number, query: ListUsersQuery) {
+  await assertUserExists(leaderId, 'LEADER_NOT_FOUND');
+  return list({ ...query, leader_id: leaderId });
+}
+
 export async function getById(id: number) {
   const user = await prisma.user.findUnique({ where: { id }, omit: SAFE_OMIT });
   if (!user) {
@@ -131,7 +145,8 @@ export async function getById(id: number) {
 export async function create(input: CreateUserInput) {
   const { bus, ...userData } = input;
   const links = bus ? normalizeBus(bus) : [];
-  // Valida cada BU antes (404 limpo em vez de P2003 da constraint).
+  // Valida FKs antes (404 limpo em vez de P2003 da constraint).
+  if (userData.leader_id != null) await assertUserExists(userData.leader_id, 'LEADER_NOT_FOUND');
   await Promise.all(links.map((l) => assertBuExists(l.bu_id)));
   const password = await hashPassword(userData.password);
 
@@ -148,6 +163,16 @@ export async function create(input: CreateUserInput) {
 
 export async function update(id: number, input: UpdateUserInput) {
   const { bus, ...userData } = input;
+  // leader_id: não pode ser o próprio usuário; se informado, precisa existir.
+  // (Guarda só o auto-ciclo direto — igual ao parent_id de BU; não detecta ciclos profundos.)
+  if (userData.leader_id != null) {
+    if (userData.leader_id === id) {
+      throw new ValidationError('Um usuário não pode ser líder de si mesmo.', {
+        code: 'INVALID_LEADER',
+      });
+    }
+    await assertUserExists(userData.leader_id, 'LEADER_NOT_FOUND');
+  }
   const data: Prisma.userUncheckedUpdateInput = { ...userData };
   if (userData.password) {
     data.password = await hashPassword(userData.password);

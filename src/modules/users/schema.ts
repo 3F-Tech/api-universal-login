@@ -82,6 +82,9 @@ export const createUserSchema = z.object({
   position_id: nullableId,
   band_id: nullableId,
   squad_id: nullableId,
+  // FK auto-referente: o líder direto deste usuário (outro user). Nullable → pode
+  // ser omitido ou enviado null (limpa o vínculo). Validado no service (404 limpo).
+  leader_id: nullableId,
   // Vínculos N:N com BUs. Presente no create grava os vínculos; no update (vide
   // updateUserSchema) presente = substitui todos, ausente = não mexe.
   bus: z.array(busLinkSchema).optional(),

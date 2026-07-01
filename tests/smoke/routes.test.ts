@@ -9,6 +9,7 @@ import { api } from '../helpers/app.js';
 const routes = [
   { method: 'get', path: '/users' }, // users
   { method: 'get', path: '/users/photos?ids=1' }, // users (fotos em lote)
+  { method: 'get', path: '/users/1/led' }, // users (liderados)
   { method: 'post', path: '/auth/validate' }, // auth
   { method: 'get', path: '/api-keys' }, // api-keys
   { method: 'get', path: '/bus' }, // bus

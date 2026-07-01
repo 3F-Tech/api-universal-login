@@ -216,6 +216,7 @@ Valida e-mail + senha do usuário **no contexto do sistema da API Key** e regist
 | `GET` | `/users` | `users:read` |
 | `GET` | `/users/photos` | `users:read` |
 | `GET` | `/users/:id` | `users:read` |
+| `GET` | `/users/:id/led` | `users:read` |
 | `POST` | `/users` | `users:write` |
 | `PATCH` | `/users/:id` | `users:write` |
 | `DELETE` | `/users/:id` | `users:delete` |
@@ -241,6 +242,11 @@ faltar, tiver valor não-inteiro/≤0, ou passar de 50.
 
 **`GET /users/:id`** → item único + `bus`, **com `profile_picture`**. 404 `USER_NOT_FOUND`.
 
+**`GET /users/:id/led`** — usuários **liderados** por `:id` (filtra `user.leader_id == :id`). Mesma
+resposta do `GET /users`: lista **leve** (sem `password`/`profile_picture`), com `bus`, paginada;
+query só `page`/`perPage`/`is_active`. Valida o líder → `404 LEADER_NOT_FOUND` se `:id` não existir.
+As fotos vêm pela rota em lote `GET /users/photos?ids=...` (mesmo fluxo da listagem).
+
 **`POST /users`** → `201`. Body:
 
 | Campo | Tipo | Obrig. | Regra |
@@ -261,6 +267,7 @@ faltar, tiver valor não-inteiro/≤0, ou passar de 50.
 | `position_id` | int | — | FK |
 | `band_id` | int | — | FK |
 | `squad_id` | int | — | FK |
+| `leader_id` | int | — | FK (líder direto — outro user; `404 LEADER_NOT_FOUND` se não existir; no PATCH não pode ser o próprio id) |
 | `bus` | array | — | `[{ "bu_id": int, "from_squad": bool=false }]` — grava os vínculos N:N |
 | `profile_picture` | string | — | imagem base64 (data URI) ou URL; **não** volta no `GET /users` — só em `/users/:id` e `/users/photos` |
 | `cep`,`street`,`street_number`,`neighborhood`,`complement`,`city`,`state`,`country` | string | — | endereço (tamanhos variados) |
@@ -616,7 +623,7 @@ Ambos ordenados por `accessed_at` desc. Item:
 |---|---|---|
 | `GET` | `/health`, `/health/ready` | *(sem auth)* |
 | `POST` | `/auth/validate` | `auth:validate` |
-| `GET` | `/users` · `/users/photos` · `/users/:id` | `users:read` |
+| `GET` | `/users` · `/users/photos` · `/users/:id` · `/users/:id/led` | `users:read` |
 | `POST` | `/users` | `users:write` |
 | `PATCH` | `/users/:id` | `users:write` |
 | `DELETE` | `/users/:id` | `users:delete` |
