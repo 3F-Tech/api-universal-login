@@ -30,10 +30,16 @@ Ordem e efeitos exatos do `validateCredentials(email, password, systemId)`:
 |---|---|---|
 | User inexistente | **não loga** (não há vínculo pra registrar) | `401 INVALID_CREDENTIALS` |
 | Sem vínculo em `systems_users` p/ esse sistema | **não loga** | `403 NO_SYSTEM_ACCESS` |
-| Conta inativa (com vínculo) | `success=false` | `403 ACCOUNT_INACTIVE` |
-| Senha errada (com vínculo) | `success=false` | `401 INVALID_CREDENTIALS` |
-| Tudo certo | `success=true` | `200` + usuário (sem `password`) + suas BUs |
+| Conta inativa (com vínculo) | `success=false`, `wrong_password=false` | `403 ACCOUNT_INACTIVE` |
+| Senha errada (com vínculo) | `success=true`, **`wrong_password=true`** | `401 INVALID_CREDENTIALS` |
+| Tudo certo | `success=true`, `wrong_password=false` | `200` + usuário (sem `password`) + suas BUs |
 
+- **`wrong_password` (coluna nullable):** separa "senha errada" das demais falhas. Senha errada de
+  usuário válido **com** acesso é uma tentativa **legítima** — por isso `success=true` — só com a
+  senha incorreta (`wrong_password=true`). Conta inativa continua `success=false`. Em registros
+  antigos (anteriores à coluna) o valor pode ser `null`.
+- **Para métricas:** "login real" = `success=true AND NOT wrong_password` (o `/access-logs/stats` já
+  aplica isso — senha errada não infla o KPI de acessos).
 - A senha é verificada **antes** de checar o vínculo (ordem do briefing), mas o resultado só é
   registrado/aplicado depois de confirmar que existe vínculo.
 - **Não** atualiza `api_key.last_used_at` aqui — o `apiKeyAuth` já faz isso em toda request.
@@ -44,7 +50,8 @@ Ordem e efeitos exatos do `validateCredentials(email, password, systemId)`:
   - `SafeUser` = `user` sem `password`.
   - `bus` = BUs do usuário via `users_bus` (N:N), cada uma com o flag **`from_squad`** (true = BU do
     squad, marcada pelo front).
-- `registerAccess(systemsUsersId, success)` insere uma linha em `systems_users_access`.
+- `registerAccess(systemsUsersId, success, wrongPassword = false)` insere uma linha em
+  `systems_users_access` (grava `success` + `wrong_password`).
 
 ## Erros
 

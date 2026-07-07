@@ -112,6 +112,8 @@ Seu sistema administra o cadastro central. Padrões:
   `/positions`, `/bands`, `/systems` (ver contratos no `API.md`).
 - **Liberar um usuário a acessar um sistema** (o que destrava o login dele lá): vincule via
   `POST /systems/:systemId/users` ou `PUT /users/:userId/systems`.
+- **Resetar a senha de um usuário** para a senha padrão da 3F: `POST /users/:id/reset-password`
+  (exige key `adm` / `admin:*`).
 - **Gerenciar API Keys** de outros sistemas: `POST /api-keys` (escolhendo `type: "adm" | "login"`).
   A key crua só aparece **uma vez** na criação — capture e entregue com segurança.
 - **Auditar acessos**: `GET /systems/:systemId/access-logs` e `GET /users/:userId/access-logs`.

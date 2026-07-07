@@ -19,6 +19,7 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 | POST | `/users` | `users:write` | Cria usuário (+ vínculos de BU opcionais) |
 | PATCH | `/users/:id` | `users:write` | Atualiza (campos parciais; pode substituir `bus`) |
 | DELETE | `/users/:id` | `users:delete` | **Hard delete** (vínculos `users_bus` caem por CASCADE) |
+| POST | `/users/:id/reset-password` | **`admin:*`** | Reseta a senha para a padrão. **Só token full-access** (ver Regras) |
 
 ## Schema (Zod) — `schema.ts`
 
@@ -51,6 +52,11 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   → 404 `LEADER_NOT_FOUND`). No **update** não pode ser o próprio `id` (400 `INVALID_LEADER`).
   Guarda só o auto-ciclo **direto** (igual ao `parent_id` de BU) — não detecta ciclos A→B→A.
 - **Senha:** hasheada com bcrypt no create e, no update, só se `password` vier preenchido.
+- **Reset de senha (`POST /users/:id/reset-password`):** grava a senha padrão (hash pronto em
+  `env.DEFAULT_PASSWORD_HASH` — **não** re-hasheia). É a **única rota admin-only** do projeto:
+  `requireScope(ADMIN_SCOPE)` exige a key ter literalmente `admin:*` (não basta `users:write` —
+  `hasScope` só passa quem tem `admin:*` quando o required é `admin:*`). Funciona pra conta ativa ou
+  inativa. Resposta `{ id, password_reset: true }`. O hash fica em env (não hardcode, rotacionável).
 - **Escrita transacional:** create/update usam `prisma.$transaction` — usuário + vínculos numa só
   unidade.
 
@@ -68,6 +74,8 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   (rota `GET /users/:id/led`); resposta leve idêntica ao `GET /users` (sem foto, com `bus`).
 - `list` embute `bus` em cada usuário via o Map acima; `getById`/`create`/`update` via `fetchUserBus`.
 - `remove` = hard delete (vínculos somem por `ON DELETE CASCADE`).
+- `resetPassword(id)` — valida o user (404 `USER_NOT_FOUND`) e faz `update` gravando
+  `env.DEFAULT_PASSWORD_HASH` na coluna `password`. Não passa por `hashPassword` (o valor já é hash).
 
 ## Fotos de perfil (perf)
 

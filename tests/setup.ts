@@ -6,3 +6,6 @@ process.env['DATABASE_URL'] ??= 'postgresql://test:test@localhost:5432/test_db';
 process.env['LOG_LEVEL'] ??= 'fatal';
 // Sem pino-pretty em testes (evita worker thread segurando o processo).
 process.env['LOG_PRETTY'] ??= 'false';
+// DEFAULT_PASSWORD_HASH é obrigatória (sem default no schema) — valor dummy só pra validar o boot.
+process.env['DEFAULT_PASSWORD_HASH'] ??=
+  '$2b$12$yGHHA9loDpKmiepnhTzYCOIKJTFb3L3Olr6gUxAkSVuNOKKuFjUXa';

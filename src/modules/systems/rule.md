@@ -8,10 +8,10 @@ Catálogo dos **sistemas internos consumidores** da 3F Venture (`id`, `name`, `d
 `logo_picture`, `is_active`). Um `system` é o "dono" das **API Keys** e dos vínculos
 **`systems_users`** (quais usuários têm acesso a ele) e **`systems_bus`** (a quais BUs ele pertence).
 
-Este módulo faz o CRUD do registro do sistema. O embute das **BUs** na listagem existe no service
-(`listWithBus`) mas está **estacionado** — o param `?include=bus` foi removido pela convenção de params
-(ver Service abaixo). Não administra as keys nem os vínculos de usuário — isso fica nos módulos
-`api-keys`, `systems-users` e `systems-bus`.
+Este módulo faz o CRUD do registro do sistema. O embute das **BUs** na listagem é exposto na rota
+dedicada `GET /systems/with-bus` (service `listWithBus`) — o antigo param `?include=bus` foi removido
+pela convenção de params (ver Service abaixo). Não administra as keys nem os vínculos de usuário —
+isso fica nos módulos `api-keys`, `systems-users` e `systems-bus`.
 
 ## Endpoints
 
@@ -20,6 +20,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 | Método | Caminho | Scope | Descrição |
 |---|---|---|---|
 | GET | `/systems` | `systems:read` | Lista (filtro `is_active`; paginado) |
+| GET | `/systems/with-bus` | `systems:read` | Lista com as BUs de cada sistema embutidas (`bus: [...]`, BU completa) |
 | GET | `/systems/:id` | `systems:read` | Um sistema |
 | POST | `/systems` | `systems:write` | Cria sistema |
 | PATCH | `/systems/:id` | `systems:write` | Edita nome/description/link/logo_picture/is_active |
@@ -57,9 +58,11 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   `{ system_id: { in: systemIds } }` e fazendo `select: { system_id: true, bu: true }` — usa a
   relação FK direta `bu` (nome limpo, não as relações desambiguadas frágeis). Agrupa as BUs por
   sistema em memória (`Map<number, LinkedBu[]>`), ordena por nome e retorna
-  `{ ...system, bus: [...] }`. Sistemas sem BU recebem `bus: []`.
-  - ⚠️ **ESTACIONADO**: sem chamador desde a remoção do param `?include=bus`. Religar quando virar
-    rota dedicada (ex.: `GET /systems-with-bus`). Não remover.
+  `{ ...system, bus: [...] }`. Sistemas sem BU recebem `bus: []`. A BU vem **completa**
+  (`select: { system_id, bu: true }`), incluindo `logo_picture` — o volume de BUs é baixo, então
+  embutir a foto não pesa a listagem (ao contrário do `profile_picture` de usuário).
+  - Exposto em **`GET /systems/with-bus`** (`controller.listWithBus`). Mesma query da `list`
+    (`is_active` + paginação) e mesmo envelope `{ data, total }`.
 - **`getById(id)`**: `findUnique`; lança `NotFoundError` (`SYSTEM_NOT_FOUND`) se não achar.
 - **`create(input)`**: `prisma.system.create` com `Prisma.systemUncheckedCreateInput`.
 - **`update(id, input)`**: `prisma.system.update` com `...input` (`Prisma.systemUncheckedUpdateInput`).
@@ -77,6 +80,6 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 
 - No `select` de `systems_bus`, use a relação FK direta **`bu`**; evite as relações desambiguadas
   (`buTobu` etc.), conforme a convenção do projeto.
-- `controller.list` chama só `list` (o `listWithBus` está estacionado até virar rota); ambos devolvem
-  o mesmo envelope `{ data, total }` para `sendList`/`buildMeta`.
+- `controller.list` chama `list`; `controller.listWithBus` chama `listWithBus`. Ambos devolvem o
+  mesmo envelope `{ data, total }` para `sendList`/`buildMeta`.
 - DELETE é hard delete; para desabilitar sem apagar use `PATCH { is_active: false }`.

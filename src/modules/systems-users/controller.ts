@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as service from './service.js';
 import {
+  batchUserIdsBodySchema,
   linkUserBodySchema,
   replaceSystemsBodySchema,
   systemIdParamSchema,
@@ -23,9 +24,21 @@ export async function link(req: Request, res: Response): Promise<void> {
   sendItem(res, await service.linkUser(systemId, user_id), 201);
 }
 
+export async function linkBatch(req: Request, res: Response): Promise<void> {
+  const { systemId } = systemIdParamSchema.parse(req.params);
+  const { user_ids } = batchUserIdsBodySchema.parse(req.body);
+  sendItem(res, await service.linkUsers(systemId, user_ids), 201);
+}
+
 export async function unlink(req: Request, res: Response): Promise<void> {
   const { systemId, userId } = systemUserParamsSchema.parse(req.params);
   sendItem(res, await service.unlinkUser(systemId, userId));
+}
+
+export async function unlinkBatch(req: Request, res: Response): Promise<void> {
+  const { systemId } = systemIdParamSchema.parse(req.params);
+  const { user_ids } = batchUserIdsBodySchema.parse(req.body);
+  sendItem(res, await service.unlinkUsers(systemId, user_ids));
 }
 
 export async function listSystemAccess(req: Request, res: Response): Promise<void> {

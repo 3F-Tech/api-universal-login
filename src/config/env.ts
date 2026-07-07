@@ -42,6 +42,12 @@ const envSchema = z.object({
   // Segurança
   BCRYPT_COST: z.coerce.number().int().min(10).max(14).default(12),
 
+  // Hash bcrypt da senha padrão aplicada pelo reset admin (POST /users/:id/reset-password).
+  // Obrigatória e definida SÓ via .env (não hardcode) — a app não sobe sem ela.
+  DEFAULT_PASSWORD_HASH: z
+    .string()
+    .regex(/^\$2[aby]\$\d{2}\$.{53}$/, 'DEFAULT_PASSWORD_HASH deve ser um hash bcrypt válido'),
+
   // Rate limiting
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),

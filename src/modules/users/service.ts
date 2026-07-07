@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
+import { env } from '../../config/env.js';
 import { hashPassword } from '../../utils/bcrypt.js';
 import { NotFoundError, ValidationError } from '../../utils/errors.js';
 import { assertBuExists, assertUserExists } from '../../utils/references.js';
@@ -199,4 +200,15 @@ export async function update(id: number, input: UpdateUserInput) {
 export async function remove(id: number): Promise<void> {
   // users_bus tem ON DELETE CASCADE — os vínculos somem junto.
   await prisma.user.delete({ where: { id } });
+}
+
+/**
+ * Reseta a senha do usuário para a senha PADRÃO (hash já pronto em env.DEFAULT_PASSWORD_HASH —
+ * não re-hasheia). Operação administrativa: a rota exige token full-access (`admin:*`), não basta
+ * `users:write`. Vale para conta ativa ou inativa.
+ */
+export async function resetPassword(id: number): Promise<{ id: number; password_reset: true }> {
+  await assertUserExists(id); // 404 USER_NOT_FOUND limpo antes do update
+  await prisma.user.update({ where: { id }, data: { password: env.DEFAULT_PASSWORD_HASH } });
+  return { id, password_reset: true };
 }

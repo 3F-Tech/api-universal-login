@@ -15,6 +15,12 @@ export async function list(req: Request, res: Response): Promise<void> {
   sendList(res, data, buildMeta(total, query));
 }
 
+export async function listWithBus(req: Request, res: Response): Promise<void> {
+  const query = listSystemsQuerySchema.parse(req.query);
+  const { data, total } = await systemsService.listWithBus(query);
+  sendList(res, data, buildMeta(total, query));
+}
+
 export async function getById(req: Request, res: Response): Promise<void> {
   const { id } = systemParamsSchema.parse(req.params);
   sendItem(res, await systemsService.getById(id));

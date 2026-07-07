@@ -147,6 +147,11 @@ docker-data/
 postgres-data/
 
 # ============================================
+# Claude Code (mantém skills compartilhadas, ignora settings pessoais)
+# ============================================
+.claude/settings.local.json
+
+# ============================================
 # Específicos do projeto
 # ============================================
 # Adicione aqui conforme necessidade

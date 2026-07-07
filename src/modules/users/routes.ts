@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as controller from './controller.js';
 import { requireScope } from '../../middleware/require-scope.js';
-import { SCOPES } from '../../config/scopes.js';
+import { ADMIN_SCOPE, SCOPES } from '../../config/scopes.js';
 
 export const usersRouter = Router();
 
@@ -14,3 +14,5 @@ usersRouter.get('/users/:id/led', requireScope(SCOPES.usersRead), controller.lis
 usersRouter.post('/users', requireScope(SCOPES.usersWrite), controller.create);
 usersRouter.patch('/users/:id', requireScope(SCOPES.usersWrite), controller.update);
 usersRouter.delete('/users/:id', requireScope(SCOPES.usersDelete), controller.remove);
+// Reset de senha para a senha padrão. SÓ token full-access (admin:*) — não basta users:write.
+usersRouter.post('/users/:id/reset-password', requireScope(ADMIN_SCOPE), controller.resetPassword);

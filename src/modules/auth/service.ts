@@ -14,9 +14,9 @@ export type ValidatedUser = SafeUser & { bus: UserBu[] };
  * API Key). Regras acordadas:
  *  - user inexistente            -> 401 (sem log: não há vínculo pra registrar)
  *  - sem vínculo em systems_users -> 403 (sem log)
- *  - conta inativa (com vínculo)  -> registra success=false -> 403
- *  - senha errada (com vínculo)   -> registra success=false -> 401
- *  - tudo certo                   -> registra success=true  -> retorna o user
+ *  - conta inativa (com vínculo)  -> registra success=false                    -> 403
+ *  - senha errada (com vínculo)   -> registra success=true + wrong_password=true -> 401
+ *  - tudo certo                   -> registra success=true                     -> retorna o user
  *
  * Obs: `api_key.last_used_at` já é atualizado pelo middleware apiKeyAuth em toda
  * request autenticada, então não duplicamos a escrita aqui.
@@ -50,7 +50,9 @@ export async function validateCredentials(
   }
 
   if (!passwordOk) {
-    await registerAccess(link.id, false);
+    // Senha errada de um usuário válido COM acesso: é uma tentativa legítima (success=true),
+    // só com a senha incorreta (wrong_password=true). Diferencia da conta inativa (success=false).
+    await registerAccess(link.id, true, true);
     throw new UnauthorizedError('Credenciais inválidas.', { code: 'INVALID_CREDENTIALS' });
   }
 
@@ -66,8 +68,12 @@ export async function validateCredentials(
   return { ...safeUser, bus: links.map(({ bu, from_squad }) => ({ ...bu, from_squad })) };
 }
 
-function registerAccess(systemsUsersId: number, success: boolean): Promise<unknown> {
+function registerAccess(
+  systemsUsersId: number,
+  success: boolean,
+  wrongPassword = false,
+): Promise<unknown> {
   return prisma.systems_users_access.create({
-    data: { systems_users_id: systemsUsersId, success },
+    data: { systems_users_id: systemsUsersId, success, wrong_password: wrongPassword },
   });
 }

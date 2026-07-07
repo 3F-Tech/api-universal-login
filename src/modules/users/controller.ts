@@ -54,3 +54,8 @@ export async function remove(req: Request, res: Response): Promise<void> {
   await usersService.remove(id);
   sendItem(res, { id, deleted: true });
 }
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { id } = userParamsSchema.parse(req.params);
+  sendItem(res, await usersService.resetPassword(id));
+}

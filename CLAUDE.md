@@ -47,8 +47,11 @@ NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHan
   `position`, `band`, `api_key` e `squad` (leader_id). A coluna é nullable no banco, mas o Zod
   exige. Validar que o user existe antes (`utils/references.ts`) para erro 404 limpo.
 - **`/auth/validate`:** user inexistente → 401 (sem log); sem vínculo em `systems_users` → 403
-  (sem log); conta inativa ou senha errada (com vínculo) → log `success=false` + 403/401; sucesso
-  → log `success=true` + retorna o user (sem `password`).
+  (sem log); conta inativa (com vínculo) → log `success=false` + 403; senha errada (com vínculo) →
+  log `success=true` + `wrong_password=true` + 401 (tentativa legítima, só senha incorreta); sucesso
+  → log `success=true` (`wrong_password=false`) + retorna o user (sem `password`). A coluna
+  `wrong_password` (nullable) separa "senha errada" de outras falhas; nas estatísticas, sucesso real
+  = `success=true AND NOT wrong_password`.
 - **Scopes:** `admin:*` libera tudo; `<recurso>:*` libera o recurso; senão match exato. Catálogo
   em `src/config/scopes.ts`.
 - **Query params = SÓ `is_active` + paginação.** Decisão de arquitetura: a query string de uma

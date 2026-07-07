@@ -47,7 +47,8 @@ user ───┬──< users_bus >─────── bu           (N:N, fro
         ├──> department         (department_id)
         ├──> position           (position_id)
         ├──> band               (band_id)
-        └──> squad              (squad_id)
+        ├──> squad              (squad_id)
+        └──> user               (leader_id → id, auto-referência: líder direto)
 
 bu ─────── bu                   (parent_id → árvore)
 squad ──┬──> bu                 (bu_id)
@@ -84,6 +85,7 @@ Recurso central de identidade. Guarda dados pessoais, de contato, endereço e os
 | `position_id` | `int4` | sim | — | **FK** → `position.id` |
 | `band_id` | `int4` | sim | — | **FK** → `band.id` |
 | `squad_id` | `int4` | sim | — | **FK** → `squad.id` |
+| `leader_id` | `int4` | sim | — | **FK** → `user.id` (**auto-referência**). Líder direto deste usuário |
 | `profile_picture` | `text` | sim | — | URL / caminho da foto / base64 |
 | `cep` | `varchar(9)` | sim | — | |
 | `street` | `varchar(200)` | sim | — | |
@@ -97,11 +99,12 @@ Recurso central de identidade. Guarda dados pessoais, de contato, endereço e os
 | `created_at` | `timestamptz` | não | `now()` | |
 | `updated_at` | `timestamptz` | não | `now()` | |
 
-**Índices:** `email`, `cpf`, `department_id`, `squad_id`, `is_active`.
+**Índices:** `email`, `cpf`, `department_id`, `squad_id`, `is_active`, `leader_id`.
 
 **Relações:** vínculos N:N com `bu` (via `users_bus`) e com `system` (via `systems_users`). Também é
 referenciado como `created_by` em `api_key`, `band`, `department`, `position`, e como `leader_id` em
-`squad`.
+`squad` **e em si mesmo** (`user.leader_id` → `user.id`, auto-referência: o líder direto de um
+usuário na hierarquia).
 
 ---
 
@@ -283,12 +286,15 @@ serializar para JSON, converta com `.toString()`.
 | `id` | `bigserial` (int8) | não | autoincremento | **PK** — **BigInt** |
 | `systems_users_id` | `int4` | não | — | **FK** → `systems_users.id` (**ON DELETE CASCADE**) |
 | `accessed_at` | `timestamptz` | não | `now()` | |
-| `success` | `boolean` | não | — | `true` = login válido; `false` = tentativa falha |
+| `success` | `boolean` | não | — | `true` = tentativa legítima (login válido **ou** senha errada); `false` = conta inativa |
+| `wrong_password` | `boolean` | sim | — | `true` = senha incorreta; `false` = senha ok / não aplicável; `null` em registros antigos |
 
 **Índices:** `accessed_at` (DESC), `systems_users_id`.
 
-> Registrado pelo fluxo de `POST /auth/validate`: sucesso → `success=true`; conta inativa ou senha
-> errada (com vínculo) → `success=false`. Casos sem vínculo / user inexistente **não** geram log.
+> Registrado pelo fluxo de `POST /auth/validate`: sucesso → `success=true`, `wrong_password=false`;
+> **senha errada** (com vínculo) → `success=true`, `wrong_password=true`; conta inativa (com vínculo)
+> → `success=false`. Casos sem vínculo / user inexistente **não** geram log. **Login efetivo** =
+> `success=true AND NOT wrong_password` (é como o `/access-logs/stats` conta acessos).
 
 ---
 

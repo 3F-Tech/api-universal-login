@@ -28,9 +28,9 @@ export async function list(query: ListSystemsQuery) {
  * Usa só campos escalares + filtros `where ... in` (sem include de relação),
  * conforme a convenção do projeto.
  *
- * ⚠️ ESTACIONADO: sem chamador desde que o param `?include=bus` foi removido
- * (convenção de params do CLAUDE.md). Pronto para religar quando virar uma rota
- * dedicada (ex.: `GET /systems-with-bus`). Não remover.
+ * Exposto em `GET /systems/with-bus` (rota dedicada de shape, ver `routes.ts`).
+ * A BU vem COMPLETA (inclui `logo_picture`): ao contrário do `profile_picture`
+ * de usuário, o volume de BUs é baixo, então embutir a foto não pesa a listagem.
  */
 export async function listWithBus(query: ListSystemsQuery) {
   const where = buildWhere(query);

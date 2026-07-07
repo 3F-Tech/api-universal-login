@@ -15,6 +15,19 @@ systemsUsersRouter.post(
   requireScope(SCOPES.systemsUsersWrite),
   controller.link,
 );
+// Vínculo em lote: dá acesso ao sistema a vários usuários de uma vez (idempotente).
+systemsUsersRouter.post(
+  '/systems/:systemId/users/batch',
+  requireScope(SCOPES.systemsUsersWrite),
+  controller.linkBatch,
+);
+// Unlink em lote: remove o acesso de vários usuários de uma vez (idempotente).
+// ANTES de '/systems/:systemId/users/:userId' — senão "batch" casa como :userId.
+systemsUsersRouter.delete(
+  '/systems/:systemId/users/batch',
+  requireScope(SCOPES.systemsUsersDelete),
+  controller.unlinkBatch,
+);
 systemsUsersRouter.delete(
   '/systems/:systemId/users/:userId',
   requireScope(SCOPES.systemsUsersDelete),

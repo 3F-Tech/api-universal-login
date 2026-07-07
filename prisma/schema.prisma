@@ -148,6 +148,7 @@ model systems_users_access {
   systems_users_id Int
   accessed_at      DateTime      @default(now()) @db.Timestamptz(6)
   success          Boolean
+  wrong_password   Boolean?
   systems_users    systems_users @relation(fields: [systems_users_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([accessed_at(sort: Desc)], map: "idx_systems_users_access_accessed_at")
