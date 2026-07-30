@@ -35,7 +35,43 @@ export const batchClientIdsBodySchema = z.object({
 export type BatchClientIdsBody = z.infer<typeof batchClientIdsBodySchema>;
 
 export const CLIENT_TYPES = ['pf', 'pj'] as const;
-export const CLIENT_STATUSES = ['active', 'churn', 'em_cancelamento'] as const;
+
+/**
+ * ⚠️ ESTA LISTA É ACOPLADA AO BANCO — tem que bater com a CHECK constraint
+ * `client_status_check` em `client.status`. Não existe enum nativo no Postgres aqui
+ * (a coluna é `varchar(20)` + CHECK), então são DOIS lugares para manter em sincronia:
+ *
+ *   1. este array (validação Zod → 400 legível);
+ *   2. o CHECK no banco (última linha de defesa).
+ *
+ * Acrescentar valor aqui SEM acrescentar no CHECK faz o request passar a validação e
+ * estourar na escrita (erro cru do Postgres, não um 400 limpo). O contrário — CHECK
+ * mais permissivo que o Zod — é inócuo. Logo: **altere o CHECK primeiro, depois o Zod.**
+ *
+ * DDL de referência (rodar no banco, nunca via `prisma migrate`):
+ *   ALTER TABLE client DROP CONSTRAINT client_status_check;
+ *   ALTER TABLE client ADD CONSTRAINT client_status_check
+ *     CHECK (status IN ('active','churn','em_cancelamento','aguardando_renovacao','cancelado'));
+ *
+ * ⚠️ A coluna é `varchar(20)` e `'aguardando_renovacao'` tem **exatamente 20 chars** —
+ * cabe sem folga nenhuma. Qualquer status futuro mais longo exige alargar a coluna antes.
+ *
+ * Semântica (definida pelo Sistema de Gestão, dono do ciclo comercial):
+ * - `active`               cliente ativo;
+ * - `aguardando_renovacao` contrato perto do vencimento, em negociação de renovação;
+ * - `em_cancelamento`      aviso prévio em curso (janela padrão de 30 dias);
+ * - `churn`                encerramento efetivado (saída comercial);
+ * - `cancelado`            anulação administrativa — trilha SEPARADA do churn (registro
+ *                          criado por engano, contrato anulado, duplicidade). Não é saída
+ *                          comercial e não deve ser somado ao churn em métricas.
+ */
+export const CLIENT_STATUSES = [
+  'active',
+  'churn',
+  'em_cancelamento',
+  'aguardando_renovacao',
+  'cancelado',
+] as const;
 
 /**
  * `type`/`status` têm CHECK constraint no banco, mas o Prisma não expõe CHECK como

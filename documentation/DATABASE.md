@@ -365,7 +365,7 @@ sistema fica na tabela de overlay dele (no sistema de gestão: `client_settings`
 | `representative_name` | `text` | sim | — | Representante legal (uso típico em `pj`) |
 | `representative_cpf` | `text` | sim | — | Sem pontuação (só dígitos) |
 | `representative_email` | `text` | sim | — | |
-| `status` | `varchar(20)` | não | `'active'` | **CHECK** `IN ('active','churn','em_cancelamento')`. Ciclo de vida **comercial** — ver nota |
+| `status` | `varchar(20)` | não | `'active'` | **CHECK** com **5** valores (ver nota). Ciclo de vida **comercial** — não confundir com `is_active` |
 | `squad_id` | `int4` | sim | — | **FK** → `squad.id` (**ON DELETE NO ACTION** — ver nota) |
 | `specialist_id` | `int4` | sim | — | **FK** → `user.id` (**NO ACTION**). Especialista de atendimento. **100% NULL hoje** |
 | `logo_picture` | `text` | sim | — | Caminho/base64 do logo. **Vazio em todos os registros hoje** |
@@ -382,12 +382,33 @@ sistema fica na tabela de overlay dele (no sistema de gestão: `client_settings`
 Distribuição: `status` → `active` 259, `churn` 31, `em_cancelamento` 3; `type` → `pj` 214, `pf` 79;
 `squad_id` preenchido em 15.
 
+### Valores de `status` (CHECK `client_status_check`)
+
+| Valor | Significado |
+|---|---|
+| `active` | Cliente ativo (**default** da coluna) |
+| `aguardando_renovacao` | Contrato perto do vencimento, em negociação de renovação |
+| `em_cancelamento` | Aviso prévio em curso (janela padrão de 30 dias) |
+| `churn` | Encerramento efetivado — saída comercial |
+| `cancelado` | Anulação administrativa — trilha **separada** do churn |
+
+`aguardando_renovacao` e `cancelado` foram acrescentados em **2026-07-30** (mudança aditiva, a pedido
+do Sistema de Gestão, que já operava com 5 estados). **`cancelado` não é `churn`** — não some os dois
+em métrica de saída comercial.
+
+> ⚠️ **Não há enum nativo no Postgres deste banco** (`pg_enum` está vazio): `status` é `varchar(20)` +
+> CHECK. O conjunto de valores válidos vive em **dois** lugares — o CHECK e o `z.enum` da API — e os
+> dois têm que ser alterados juntos, **CHECK primeiro**. Só o Zod estendido faz o request passar a
+> validação e estourar na escrita.
+>
+> ⚠️ **`'aguardando_renovacao'` ocupa exatamente 20 dos 20 chars da coluna.** Status futuro mais longo
+> exige alargar a coluna antes.
+
 ### ⚠️ `status` ≠ `is_active` — os dois coexistem, com significados diferentes
 
 Decisão consciente da migração. **Não** são redundantes:
 
-- **`status`** = ciclo de vida **comercial** (`active` / `churn` / `em_cancelamento`). É o que a
-  regra de negócio consulta.
+- **`status`** = ciclo de vida **comercial** (ver tabela acima). É o que a regra de negócio consulta.
 - **`is_active`** = **soft-delete do registro** (convenção de toda tabela da Core). Um cliente em
   churn é um registro **válido**, então todos os 293 entraram com `is_active = true`.
 

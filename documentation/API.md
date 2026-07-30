@@ -881,13 +881,29 @@ Os **IDs foram preservados** na migração, então `client_id` das tabelas locai
 
 ### ⚠️ `status` ≠ `is_active` — leia antes de filtrar
 
-- **`status`** (`active` | `churn` | `em_cancelamento`) = ciclo de vida **comercial**. É o que a
-  regra de negócio consulta.
+- **`status`** = ciclo de vida **comercial** (5 valores, tabela abaixo). É o que a regra de negócio
+  consulta.
 - **`is_active`** = soft-delete do registro (convenção da Core). Um cliente em churn é um registro
   **válido**, com `is_active = true`.
 
 > **Filtrar `?is_active=true` esperando "clientes ativos" traz os churns junto.** Para negócio, use
 > `status` no seu lado.
+
+### Valores de `status`
+
+| Valor | Significado |
+|---|---|
+| `active` | Cliente ativo (**default** ao criar) |
+| `aguardando_renovacao` | Contrato perto do vencimento, em negociação de renovação |
+| `em_cancelamento` | Aviso prévio em curso (janela padrão de 30 dias) |
+| `churn` | Encerramento efetivado — saída comercial |
+| `cancelado` | Anulação administrativa — trilha **separada** do churn (registro criado por engano, contrato anulado, duplicidade) |
+
+> **`cancelado` não é `churn`.** Não some os dois em métrica de churn: `cancelado` é correção de
+> cadastro, não saída comercial.
+>
+> Valor fora dessa lista → `400 VALIDATION_ERROR`. `aguardando_renovacao` e `cancelado` foram
+> liberados em **2026-07-30**; antes disso só existiam os outros três.
 
 **`GET /clients`** — lista paginada. Query: `page`, `perPage`, `is_active`. Ordenada por `name` asc.
 Cada item vem **sem `logo_picture`** (ver nota de imagens abaixo). Item:
@@ -949,7 +965,7 @@ Resposta: **array** (item único, **não paginado**), ordenado por `id` asc, **s
 | `type` | enum | ✅ | `pf` ou `pj` (**minúsculo**) |
 | `name` | string | ✅ | 1–200 |
 | `document` | string | ✅ | 1–30, **único** (409 se repetir). Envie só dígitos |
-| `status` | enum | — | `active` \| `churn` \| `em_cancelamento` (default no banco: `active`) |
+| `status` | enum | — | Um dos **5** valores da tabela de `status` acima (default no banco: `active`) |
 | `email` | string | — | e-mail válido, ≤150 |
 | `phone` | string | — | ≤30 |
 | `instagram` | string | — | ≤200 |

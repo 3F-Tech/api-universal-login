@@ -69,10 +69,10 @@ confirmada explicitamente com o usuário antes de implementar). Resolução adot
   `MAX_BATCH_USERS` de `systems-users`).
 - **create** (`createClientSchema`):
   - `type` (obrigatório, `enum` `CLIENT_TYPES = ['pf', 'pj']`) e `status` (opcional, `enum`
-    `CLIENT_STATUSES = ['active', 'churn', 'em_cancelamento']`) — o banco tem CHECK constraint pros
+    `CLIENT_STATUSES`, **5 valores** — ver seção própria abaixo) — o banco tem CHECK constraint pros
     dois, mas o Prisma introspecta CHECK como `varchar` cru (não vira enum do client gerado); a
     validação de valores permitidos por isso **também** precisa estar no Zod, senão um valor fora do
-    enum vaza como erro cru do Postgres (500) em vez de `400 VALIDATION_ERROR` legível.
+    enum vaza como erro cru do Postgres em vez de `400 VALIDATION_ERROR` legível.
   - `name`, `document` obrigatórios (`document` é a chave natural, `UNIQUE` no banco).
   - Campos pessoais/endereço (`email`, `phone`, `instagram`, `cep`, `logradouro`, `numero`,
     `complement`, `bairro`, `cidade`, `uf`, `representative_name`, `representative_cpf`,
@@ -116,6 +116,50 @@ confirmada explicitamente com o usuário antes de implementar). Resolução adot
   guardar caminho de arquivo em object storage/CDN em vez de base64; quando isso acontecer é troca
   de conteúdo, sem mudar schema nem contrato.
 - **Sem hard delete** (ver aviso nos Endpoints acima). `DELETE` simplesmente não existe nas rotas.
+
+## `status` — 5 valores, acoplados ao CHECK do banco
+
+O ciclo de vida **comercial** do cliente. Quem manda na semântica é o Sistema de Gestão (dono do
+processo); a Core só persiste e valida.
+
+| Valor | Significado |
+|---|---|
+| `active` | Cliente ativo |
+| `aguardando_renovacao` | Contrato perto do vencimento, em negociação de renovação |
+| `em_cancelamento` | Aviso prévio em curso (janela padrão de 30 dias) |
+| `churn` | Encerramento efetivado — saída comercial |
+| `cancelado` | Anulação administrativa — trilha **separada** do churn (registro criado por engano, contrato anulado, duplicidade) |
+
+> **`cancelado` ≠ `churn`.** Não somar os dois em métrica de churn: `cancelado` não é saída
+> comercial, é correção de cadastro.
+
+**Histórico:** nasceu com 3 valores (`active`/`churn`/`em_cancelamento`, os que vieram na migração).
+`aguardando_renovacao` e `cancelado` foram acrescentados em 2026-07-30 a pedido do Sistema de Gestão,
+que já usava 5 estados e estava tomando 400 nos dois novos. Mudança **aditiva**: nada renomeado, nada
+removido, default segue `active`.
+
+### ⚠️ Dois lugares para manter em sincronia
+
+Não existe enum nativo no Postgres deste banco (verificado: `pg_enum` vazio). `client.status` é
+`varchar(20)` + **CHECK constraint** `client_status_check`. Então o conjunto de valores válidos vive
+em **dois** lugares:
+
+1. `CLIENT_STATUSES` no `schema.ts` — validação Zod, dá o `400 VALIDATION_ERROR` legível;
+2. o CHECK no banco — última linha de defesa.
+
+**Ordem obrigatória ao acrescentar valor: CHECK primeiro, Zod depois.** Zod mais permissivo que o
+CHECK faz o request passar a validação e estourar na escrita com erro cru do Postgres (o `400` limpo
+vira erro genérico). O inverso (CHECK mais permissivo que o Zod) é inócuo.
+
+```sql
+ALTER TABLE client DROP CONSTRAINT client_status_check;
+ALTER TABLE client ADD CONSTRAINT client_status_check
+  CHECK (status IN ('active','churn','em_cancelamento','aguardando_renovacao','cancelado'));
+```
+
+> ⚠️ **`'aguardando_renovacao'` tem exatamente 20 chars e a coluna é `varchar(20)`** — cabe sem folga
+> nenhuma. Qualquer status futuro mais longo exige `ALTER TABLE ... ALTER COLUMN status TYPE
+> varchar(N)` antes, senão trunca/estoura.
 
 ## ⚠️ As FKs de `client` são `NO ACTION` — afeta `DELETE` de OUTROS módulos
 
