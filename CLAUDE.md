@@ -118,6 +118,7 @@ A ideia é que qualquer agente pegue o contexto completo lendo só os `.md`, sem
 | systems-users | `src/modules/systems-users/rule.md` | Vínculo N:N user↔system (+ `role` por sistema) |
 | systems-bus | `src/modules/systems-bus/rule.md` | Vínculo N:N system↔bu |
 | access-logs | `src/modules/access-logs/rule.md` | Leitura dos logs de acesso (`id` é BigInt) |
+| clients | `src/modules/clients/rule.md` | CRUD (sem hard delete) de clientes, migrado do `sistema_gestao` |
 | health | `src/modules/health/rule.md` | Healthcheck (única rota sem auth) |
 
 ## Testes

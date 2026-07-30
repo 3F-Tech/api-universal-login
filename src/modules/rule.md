@@ -58,6 +58,7 @@ routes.ts  →  controller.ts  →  service.ts  →  schema.ts
 | `systems-users` | Vínculo N:N user↔system (+ `role` por sistema). | `systems-users/rule.md` |
 | `systems-bus` | Vínculo N:N system↔bu. | `systems-bus/rule.md` |
 | `access-logs` | Leitura dos logs de acesso (`id` é BigInt — serializar com `.toString()`). | `access-logs/rule.md` |
+| `clients` | CRUD (sem hard delete) de clientes; recurso migrado do `sistema_gestao`. `id` é BigInt, serializado como `number`. | `clients/rule.md` |
 | `health` | Healthcheck. **Única rota sem auth.** | `health/rule.md` |
 
 ## Criar um módulo novo

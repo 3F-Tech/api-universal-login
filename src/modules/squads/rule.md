@@ -102,8 +102,13 @@ Define **membro** assim (decisão travada):
 - `403 INSUFFICIENT_SCOPE` — token não tem o scope da rota.
 - `404` — `SQUAD_NOT_FOUND` (id inexistente em `getById`/`listUsers`), `LEADER_NOT_FOUND`
   (`leader_id` inexistente no create/update), `BU_NOT_FOUND` (`bu_id` inexistente no create/update).
-- `409` — `DELETE` de squad referenciado (FK `user.squad_id`) → Prisma `P2003` mapeado pelo
-  `error-handler`.
+- `409 FK_CONSTRAINT` — `DELETE` de squad que ainda tem **cliente** vinculado (`client.squad_id`,
+  FK **`NO ACTION`**) → Prisma `P2003` mapeado pelo `error-handler`. Caso real: 15 dos 293 clientes
+  têm `squad_id` (medido em 2026-07-30). Ver `../clients/rule.md` § "As FKs de `client` são
+  `NO ACTION`".
+  - ⚠️ **`user.squad_id` NÃO causa 409** (esta linha afirmava o contrário até 2026-07-30 — estava
+    errada): aquela FK é `ON DELETE SET NULL`, então apagar um squad com membros só zera o
+    `squad_id` deles e passa. Verificado em `pg_constraint`.
 
 ## Gotchas
 

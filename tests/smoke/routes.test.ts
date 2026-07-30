@@ -25,6 +25,12 @@ const routes = [
   { method: 'get', path: '/bus/1/systems' }, // systems-bus (inverso)
   { method: 'get', path: '/systems/1/access-logs' }, // access-logs
   { method: 'get', path: '/users/1/access-logs' }, // access-logs (inverso)
+  { method: 'get', path: '/clients' }, // clients
+  { method: 'get', path: '/clients/search?q=acme' }, // clients (busca)
+  { method: 'get', path: '/clients/by-document/12345678900' }, // clients (lookup natural)
+  { method: 'post', path: '/clients/batch' }, // clients (batch)
+  { method: 'get', path: '/squads/1/clients' }, // clients (por squad)
+  { method: 'get', path: '/users/1/clients' }, // clients (por especialista)
 ] as const;
 
 describe('Proteção por API Key (smoke por módulo)', () => {

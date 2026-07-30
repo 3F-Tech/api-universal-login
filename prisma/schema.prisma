@@ -96,6 +96,7 @@ model squad {
   is_active                  Boolean  @default(true)
   created_at                 DateTime @default(now()) @db.Timestamptz(6)
   updated_at                 DateTime @default(now()) @db.Timestamptz(6)
+  client                     client[]
   bu                         bu?      @relation(fields: [bu_id], references: [id], onUpdate: NoAction)
   user_squad_leader_idTouser user?    @relation("squad_leader_idTouser", fields: [leader_id], references: [id], onUpdate: NoAction)
   user_user_squad_idTosquad  user[]   @relation("user_squad_idTosquad")
@@ -188,6 +189,8 @@ model user {
   leader_id                                 Int?
   api_key                                   api_key[]
   band_band_created_byTouser                band[]          @relation("band_created_byTouser")
+  client_client_created_byTouser            client[]        @relation("client_created_byTouser")
+  client_client_specialist_idTouser         client[]        @relation("client_specialist_idTouser")
   department_department_created_byTouser    department[]    @relation("department_created_byTouser")
   position_position_created_byTouser        position[]      @relation("position_created_byTouser")
   squad_squad_leader_idTouser               squad[]         @relation("squad_leader_idTouser")
@@ -220,4 +223,42 @@ model users_bus {
   @@unique([user_id, bu_id], map: "uq_users_bus")
   @@index([bu_id], map: "idx_users_bus_bu_id")
   @@index([user_id], map: "idx_users_bus_user_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model client {
+  id                              BigInt   @id @default(autoincrement())
+  type                            String   @db.VarChar(2)
+  name                            String
+  document                        String   @unique
+  email                           String?
+  phone                           String?
+  instagram                       String?
+  cep                             String?
+  logradouro                      String?
+  numero                          String?
+  complement                      String?
+  bairro                          String?
+  cidade                          String?
+  uf                              String?
+  representative_name             String?
+  representative_cpf              String?
+  representative_email            String?
+  status                          String   @default("active") @db.VarChar(20)
+  squad_id                        Int?
+  specialist_id                   Int?
+  logo_picture                    String?
+  is_active                       Boolean  @default(true)
+  created_by                      Int?
+  created_at                      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime @default(now()) @db.Timestamptz(6)
+  user_client_created_byTouser    user?    @relation("client_created_byTouser", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_client_specialist_idTouser user?    @relation("client_specialist_idTouser", fields: [specialist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  squad                           squad?   @relation(fields: [squad_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([email], map: "idx_client_email")
+  @@index([is_active], map: "idx_client_is_active")
+  @@index([specialist_id], map: "idx_client_specialist_id")
+  @@index([squad_id], map: "idx_client_squad_id")
+  @@index([status], map: "idx_client_status")
 }

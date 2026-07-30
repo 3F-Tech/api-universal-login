@@ -11,6 +11,7 @@ import { systemsRouter } from './modules/systems/routes.js';
 import { systemsUsersRouter } from './modules/systems-users/routes.js';
 import { systemsBusRouter } from './modules/systems-bus/routes.js';
 import { accessLogsRouter } from './modules/access-logs/routes.js';
+import { clientsRouter } from './modules/clients/routes.js';
 
 /**
  * Agrega todos os routers protegidos (montados depois de apiKeyAuth +
@@ -32,3 +33,4 @@ apiRouter.use(systemsRouter);
 apiRouter.use(systemsUsersRouter);
 apiRouter.use(systemsBusRouter);
 apiRouter.use(accessLogsRouter);
+apiRouter.use(clientsRouter);

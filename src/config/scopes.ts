@@ -51,6 +51,12 @@ export const SCOPES = {
   systemsBusDelete: 'systems-bus:delete',
 
   accessLogsRead: 'access-logs:read',
+
+  // Sem clientsDelete: não há hard delete de client (churn é histórico financeiro
+  // referenciado sem FK cross-banco por contracts/contract_churns/spiced no
+  // sistema_gestao) — desativação é só PATCH { is_active: false }, sob clientsWrite.
+  clientsRead: 'clients:read',
+  clientsWrite: 'clients:write',
 } as const;
 
 /** Lista achatada de todos os scopes válidos (útil pra validação/documentação). */

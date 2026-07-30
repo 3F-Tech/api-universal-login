@@ -66,7 +66,15 @@ Cada rota exige um scope no formato `<recurso>:<ação>`. Regras de cobertura:
 `squads:{read,write,delete}`, `departments:{read,write,delete}`, `positions:{read,write,delete}`,
 `bands:{read,write,delete}`, `systems:{read,write,delete}`, `api-keys:{read,write,delete}`,
 `systems-users:{read,write,delete}`, `systems-bus:{read,write,delete}`, `access-logs:read`,
-e o super-scope `admin:*`.
+`clients:{read,write}`, e o super-scope `admin:*`.
+
+> **`clients` não tem scope `:delete`** — o recurso não expõe hard delete (ver §6.14). Desativar é
+> `PATCH { is_active: false }`, coberto por `clients:write`.
+>
+> ⚠️ **Os scopes de `clients` não estão em nenhum dos dois tipos de key abaixo.** Hoje só uma key
+> `adm` (`admin:*`) alcança `/clients/*`. Um sistema que precise apenas ler clientes ainda não tem
+> um tipo próprio — se isso for necessário, um administrador precisa decidir criar um tipo novo no
+> catálogo (`src/config/scopes.ts`), não montar scopes crus.
 
 **Tipos de key** (o cliente pede um `type`, a API expande nos scopes):
 
@@ -146,6 +154,10 @@ Limite **por API Key** (default `100` req / `60s`; configurável por ambiente). 
 - `DELETE /<recurso>/:id` → **exclusão real** (hard delete). Resposta: `{ "data": { "id", "deleted": true } }`.
 - `is_active` é **soft-disable** independente — alterado via `PATCH`, nunca apaga o registro.
 - Campos `password` e `key_hash` **nunca** retornam.
+
+> **Exceção: `clients` não tem `DELETE`.** É o único recurso sem hard delete — há histórico
+> financeiro apontando para o cliente de outro banco, sem FK real (ver §6.14). Desativar é
+> `PATCH { "is_active": false }`.
 
 ---
 
@@ -842,6 +854,179 @@ cruza com o que já tem carregado).
 
 ---
 
+## 6.14 Clients — scopes `clients:read` / `clients:write`
+
+Clientes da 3F. Recurso **migrado em 2026-07** da plataforma de contratos (`sistema_gestao.clients`)
+para a Core, porque quase todos os sistemas internos passaram a precisar consumir dados de cliente.
+A Core guarda a **identidade** do cliente; o que é específico de um sistema fica no overlay local
+dele (no sistema de gestão: `client_settings` → `contact_id`, `is_delinquent`, `squad_id_manual`).
+Os **IDs foram preservados** na migração, então `client_id` das tabelas locais continua válido.
+
+| Método | Rota | Scope |
+|---|---|---|
+| `GET` | `/clients` | `clients:read` |
+| `GET` | `/clients/search` | `clients:read` |
+| `GET` | `/clients/by-document/:document` | `clients:read` |
+| `GET` | `/clients/:id` | `clients:read` |
+| `POST` | `/clients/batch` | **`clients:read`** (leitura em lote) |
+| `POST` | `/clients` | `clients:write` |
+| `PATCH` | `/clients/:id` | `clients:write` |
+| `GET` | `/squads/:squadId/clients` | `clients:read` |
+| `GET` | `/users/:userId/clients` | `clients:read` |
+
+> ⚠️ **Não existe `DELETE /clients/:id`.** Churn é histórico financeiro: `contract_churns.client_id`
+> e `spiced.client_id` (no banco do sistema de gestão) referenciam o cliente **sem FK real** —
+> Postgres não faz FK entre bancos —, então apagar aqui deixaria registros órfãos em silêncio. Para
+> desativar: `PATCH { "is_active": false }`.
+
+### ⚠️ `status` ≠ `is_active` — leia antes de filtrar
+
+- **`status`** (`active` | `churn` | `em_cancelamento`) = ciclo de vida **comercial**. É o que a
+  regra de negócio consulta.
+- **`is_active`** = soft-delete do registro (convenção da Core). Um cliente em churn é um registro
+  **válido**, com `is_active = true`.
+
+> **Filtrar `?is_active=true` esperando "clientes ativos" traz os churns junto.** Para negócio, use
+> `status` no seu lado.
+
+**`GET /clients`** — lista paginada. Query: `page`, `perPage`, `is_active`. Ordenada por `name` asc.
+Cada item vem **sem `logo_picture`** (ver nota de imagens abaixo). Item:
+```json
+{
+  "id": 12, "type": "pj", "name": "Acme LTDA", "document": "12345678000190",
+  "email": "contato@acme.com", "phone": "11912345678", "instagram": "@acme",
+  "cep": "01310-100", "logradouro": "Av. Paulista", "numero": "1000", "complement": null,
+  "bairro": "Bela Vista", "cidade": "São Paulo", "uf": "SP",
+  "representative_name": "Fulano", "representative_cpf": "12345678900",
+  "representative_email": "fulano@acme.com",
+  "status": "active", "squad_id": 3, "specialist_id": null, "is_active": true,
+  "created_by": null, "created_at": "2026-06-22T13:45:00.000Z", "updated_at": "2026-06-22T13:45:00.000Z"
+}
+```
+
+> **Filtros que são ROTA, não query param** (convenção desta API — filtro explícito é descobrível
+> pelo contrato): recorte por squad → `GET /squads/:squadId/clients`; por especialista →
+> `GET /users/:userId/clients`; busca textual → `GET /clients/search?q=`. **`status` ainda não é
+> filtrável** por nenhum dos dois caminhos — se precisar, peça a rota.
+
+**`GET /clients/search`** — busca paginada por `name` **ou** `document` (case-insensitive, substring).
+Query: `q` (**obrigatório**, 1–150 chars) + `page`, `perPage`. Mesmo shape de item do `GET /clients`
+(sem `logo_picture`).
+
+**`GET /clients/by-document/:document`** — lookup pela **chave natural** (`document` é `UNIQUE`).
+Item único, **com** `logo_picture`. 404 `CLIENT_NOT_FOUND`.
+
+> ⚠️ **O match é exato e os documentos estão gravados SEM pontuação** (só dígitos — CPF 11, CNPJ 14).
+> Mandar `00.000.000/0001-00` devolve **404**: normalize para dígitos antes de chamar. (A API não
+> normaliza hoje, nem na leitura nem na escrita.)
+
+**`GET /clients/:id`** — item único, **com** `logo_picture`. 404 `CLIENT_NOT_FOUND`.
+
+**`POST /clients/batch`** → `200`. **O endpoint que mata o N+1**: hidrata vários clientes por id numa
+única chamada (ex.: uma página de contratos → colete os `client_id` distintos → **um** batch → monte
+um `Map` e hidrate em memória). É `POST` só porque o array de ids vai no body; semanticamente é
+leitura, por isso o scope é **`clients:read`**. Body:
+```json
+{ "ids": [12, 40, 291] }
+```
+| Campo | Tipo | Regra |
+|---|---|---|
+| `ids` | int[] | obrigatório, **1 a 200** ids positivos; duplicados são ignorados |
+
+Resposta: **array** (item único, **não paginado**), ordenado por `id` asc, **sem `logo_picture`**:
+```json
+{ "data": [ { "id": 12, "name": "Acme LTDA", "...": "..." } ] }
+```
+- **Ids inexistentes são omitidos, não geram erro** (mesma semântica de `GET /users/photos`): um id
+  ausente não deve derrubar a página inteira de contratos. Compare o tamanho do array com o que pediu
+  se precisar detectar faltantes.
+- **Uma chamada por página, nunca uma por item.** Se aparecer chamada dentro de loop, está errado.
+
+**`POST /clients`** → `201`. Body:
+
+| Campo | Tipo | Obrig. | Regra |
+|---|---|---|---|
+| `type` | enum | ✅ | `pf` ou `pj` (**minúsculo**) |
+| `name` | string | ✅ | 1–200 |
+| `document` | string | ✅ | 1–30, **único** (409 se repetir). Envie só dígitos |
+| `status` | enum | — | `active` \| `churn` \| `em_cancelamento` (default no banco: `active`) |
+| `email` | string | — | e-mail válido, ≤150 |
+| `phone` | string | — | ≤30 |
+| `instagram` | string | — | ≤200 |
+| `cep` | string | — | ≤9 |
+| `logradouro` | string | — | ≤200 |
+| `numero` | string | — | ≤100 (texto livre) |
+| `complement` | string | — | ≤200 |
+| `bairro` | string | — | ≤100 |
+| `cidade` | string | — | ≤100 |
+| `uf` | string | — | ≤2, normalizado p/ maiúsculo |
+| `representative_name` | string | — | ≤200 |
+| `representative_cpf` | string | — | ≤14 |
+| `representative_email` | string | — | e-mail válido, ≤150 |
+| `squad_id` | int | — | FK → `squad` (404 `SQUAD_NOT_FOUND` se enviado e inexistente). Aceita `null` |
+| `specialist_id` | int | — | FK → `user` (404 `SPECIALIST_NOT_FOUND`). Aceita `null` |
+| `logo_picture` | string | — | Caminho / base64 |
+| `is_active` | bool | — | default no banco = `true` |
+| `created_by` | int | — | FK → `user` (404 `CREATED_BY_NOT_FOUND`). **Opcional de verdade** neste recurso |
+
+> ⚠️ `created_by` aqui é **opcional**, diferente de `departments`/`positions`/`bands`/`api-keys`,
+> onde a regra de negócio exige.
+>
+> ⚠️ `type` é **minúsculo** (`'pj'`) nesta API. O sistema de gestão usa `'PJ'` maiúsculo em
+> `contracts_templates.person_type` — inconsistência conhecida e mantida; converta no seu lado.
+
+**`PATCH /clients/:id`** — atualização **parcial** (todos os campos acima, exceto `created_by`, que
+não é alterável após a criação). `squad_id`/`specialist_id` aceitam `null` para limpar o vínculo, e
+são validados quando enviados com valor. Id inexistente → `404 NOT_FOUND` (**código genérico**, não
+`CLIENT_NOT_FOUND` — igual aos outros recursos CRUD desta API).
+
+**`GET /squads/:squadId/clients`** — clientes de um squad (via `client.squad_id`), paginado, sem
+`logo_picture`. Valida o squad (404 `SQUAD_NOT_FOUND`).
+
+**`GET /users/:userId/clients`** — clientes atendidos por um usuário como **especialista** (via
+`client.specialist_id`), paginado, sem `logo_picture`. Valida o usuário (404 `SPECIALIST_NOT_FOUND`).
+
+> **`specialist_id` está NULL em 100% dos clientes hoje** (na origem os únicos valores apontavam para
+> devs, não para especialistas reais, e foram descartados de propósito). Esta rota devolve lista
+> vazia até a atribuição começar a ser usada. Quando for, grave o **`user.id` da Core** — não o id
+> de usuário/seller do seu sistema.
+
+### Imagens (`logo_picture`)
+
+`logo_picture` **só** vem em `GET /clients/:id` e `GET /clients/by-document/:document`. Está fora de
+`GET /clients`, `/clients/search`, `/clients/batch` e das duas rotas aninhadas — mesmo motivo do
+`profile_picture` de usuário: o formato previsto é base64 inline, que arrastaria a imagem inteira por
+registro. Hoje a coluna está **vazia em todos os registros**, então a omissão é preventiva; o contrato
+já nasce certo. O plano acordado é migrar para caminho em object storage/CDN — troca de conteúdo, sem
+mudar o contrato.
+
+### Erros
+
+| HTTP | `code` | Quando |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `type`/`status` fora do enum, `document`/`name` ausentes, `ids` vazio ou > 200, `q` ausente |
+| 404 | `CLIENT_NOT_FOUND` | `id`/`document` inexistente em `GET /clients/:id` e `GET /clients/by-document/:document` |
+| 404 | `NOT_FOUND` | **`PATCH` de id inexistente** — código genérico, não `CLIENT_NOT_FOUND` |
+| 404 | `SQUAD_NOT_FOUND` | `squad_id` inexistente (create/update) ou `:squadId` inexistente |
+| 404 | `SPECIALIST_NOT_FOUND` | `specialist_id` inexistente (create/update) ou `:userId` inexistente |
+| 404 | `CREATED_BY_NOT_FOUND` | `created_by` inexistente no create |
+| 409 | `CONFLICT` | `document` duplicado (`details.target` inclui `document`) |
+
+### ⚠️ Efeito colateral em `DELETE` de squads e usuários
+
+As FKs de `client` são **`ON DELETE NO ACTION`** (assimetria com o resto da Core, onde são
+`SET NULL`/`CASCADE`). `NO ACTION` **bloqueia** a exclusão do pai em vez de anular o filho:
+
+- **`DELETE /squads/:id`** → **`409 FK_CONSTRAINT`** se o squad tiver clientes vinculados. **Já
+  acontece hoje** (15 dos 293 clientes têm `squad_id`).
+- **`DELETE /users/:id`** → **`409 FK_CONSTRAINT`** se o usuário for `specialist_id` ou `created_by`
+  de algum cliente. Não ocorre hoje (colunas NULL), mas passará a ocorrer quando forem usadas.
+
+Para excluir nesses casos, primeiro desvincule os clientes (`PATCH /clients/:id` com `squad_id: null`
+/ `specialist_id: null`).
+
+---
+
 ## 7. Resumo de todos os endpoints
 
 | Método | Rota | Scope |
@@ -879,3 +1064,8 @@ cruza com o que já tem carregado).
 | `PUT` | `/systems/:systemId/bus` | `systems-bus:write` |
 | `DELETE` | `/systems/:systemId/bus/:buId` | `systems-bus:delete` |
 | `GET` | `/systems/:systemId/access-logs` · `/users/:userId/access-logs` · `/systems/:systemId/users/:userId/access-logs` · `/access-logs/stats` · `/access-logs/wrong-password` · `/access-logs/today` | `access-logs:read` |
+| `GET` | `/clients` · `/clients/search` · `/clients/by-document/:document` · `/clients/:id` · `/squads/:squadId/clients` · `/users/:userId/clients` | `clients:read` |
+| `POST` | `/clients/batch` *(leitura em lote)* | `clients:read` |
+| `POST` | `/clients` | `clients:write` |
+| `PATCH` | `/clients/:id` | `clients:write` |
+| `DELETE` | *(`/clients/:id` **não existe** — use `PATCH { is_active: false }`)* | — |
