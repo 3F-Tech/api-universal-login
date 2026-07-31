@@ -254,6 +254,7 @@ model client {
   created_by                      Int?
   created_at                      DateTime @default(now()) @db.Timestamptz(6)
   updated_at                      DateTime @default(now()) @db.Timestamptz(6)
+  common_name                     String?  @db.VarChar(150)
   user_client_created_byTouser    user?    @relation("client_created_byTouser", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user_client_specialist_idTouser user?    @relation("client_specialist_idTouser", fields: [specialist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   squad                           squad?   @relation(fields: [squad_id], references: [id], onDelete: NoAction, onUpdate: NoAction)

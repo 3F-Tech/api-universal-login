@@ -360,6 +360,7 @@ sistema fica na tabela de overlay dele (no sistema de gestão: `client_settings`
 | `id` | `bigserial` (int8) | não | autoincremento | **PK** — **BigInt** no banco; a API expõe como **number** (ver nota abaixo) |
 | `type` | `varchar(2)` | não | — | **CHECK** `IN ('pf','pj')` — minúsculo |
 | `name` | `text` | não | — | |
+| `common_name` | `varchar(150)` | sim | — | Nome comum/usual do cliente, distinto de `name` (razão social). Coluna nova em 2026-07-31 |
 | `document` | `text` | não | — | **UNIQUE**. CPF/CNPJ — **armazenado sem pontuação** (só dígitos) |
 | `email` | `text` | sim | — | |
 | `phone` | `text` | sim | — | |

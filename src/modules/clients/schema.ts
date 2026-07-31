@@ -91,6 +91,7 @@ export const CLIENT_STATUSES = [
 export const createClientSchema = z.object({
   type: z.enum(CLIENT_TYPES),
   name: z.string().trim().min(1).max(200),
+  common_name: z.string().trim().max(150).nullish(),
   document: z.string().trim().min(1).max(30),
   email: z.string().trim().toLowerCase().email().max(150).nullish(),
   phone: z.string().trim().max(30).nullish(),

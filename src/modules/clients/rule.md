@@ -74,6 +74,8 @@ confirmada explicitamente com o usuário antes de implementar). Resolução adot
     validação de valores permitidos por isso **também** precisa estar no Zod, senão um valor fora do
     enum vaza como erro cru do Postgres em vez de `400 VALIDATION_ERROR` legível.
   - `name`, `document` obrigatórios (`document` é a chave natural, `UNIQUE` no banco).
+  - `common_name` (novo, 2026-07-31) — `.nullish()`, `varchar(150)` no banco. Nome comum/usual do
+    cliente, distinto de `name` (razão social). Sem relação com nenhuma outra tabela.
   - Campos pessoais/endereço (`email`, `phone`, `instagram`, `cep`, `logradouro`, `numero`,
     `complement`, `bairro`, `cidade`, `uf`, `representative_name`, `representative_cpf`,
     `representative_email`, `logo_picture`) — todos `.nullish()` (nullable no banco).

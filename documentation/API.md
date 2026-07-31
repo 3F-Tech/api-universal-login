@@ -914,7 +914,7 @@ Os **IDs foram preservados** na migração, então `client_id` das tabelas locai
 Cada item vem **sem `logo_picture`** (ver nota de imagens abaixo). Item:
 ```json
 {
-  "id": 12, "type": "pj", "name": "Acme LTDA", "document": "12345678000190",
+  "id": 12, "type": "pj", "name": "Acme LTDA", "common_name": "Acme", "document": "12345678000190",
   "email": "contato@acme.com", "phone": "11912345678", "instagram": "@acme",
   "cep": "01310-100", "logradouro": "Av. Paulista", "numero": "1000", "complement": null,
   "bairro": "Bela Vista", "cidade": "São Paulo", "uf": "SP",
@@ -969,6 +969,7 @@ Resposta: **array** (item único, **não paginado**), ordenado por `id` asc, **s
 |---|---|---|---|
 | `type` | enum | ✅ | `pf` ou `pj` (**minúsculo**) |
 | `name` | string | ✅ | 1–200 |
+| `common_name` | string | — | ≤150. Nome comum/usual do cliente, distinto de `name` (razão social) |
 | `document` | string | ✅ | 1–30, **único** (409 se repetir). Envie só dígitos |
 | `status` | enum | — | Um dos **5** valores da tabela de `status` acima (default no banco: `active`) |
 | `email` | string | — | e-mail válido, ≤150 |
