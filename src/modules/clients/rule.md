@@ -161,6 +161,46 @@ ALTER TABLE client ADD CONSTRAINT client_status_check
 > nenhuma. Qualquer status futuro mais longo exige `ALTER TABLE ... ALTER COLUMN status TYPE
 > varchar(N)` antes, senão trunca/estoura.
 
+## `updated_at` depende de trigger no banco (a tabela nasceu sem ele)
+
+**Nenhum service da Core grava `updated_at`** — todas as tabelas dependem do trigger
+`trg_<tabela>_updated_at` (função `update_updated_at_column()`, que faz só `NEW.updated_at = NOW()`).
+O `update()` deste módulo segue esse padrão: espalha o input e não toca em `updated_at`.
+
+A tabela `client` foi criada **sem** esse trigger, enquanto as 8 outras tabelas da Core sempre o
+tiveram. Resultado: entre a migração e 2026-07-30, `client.updated_at` ficou **congelado** no valor de
+criação — inclusive após `PATCH /clients/:id`. Corrigido em 2026-07-30:
+
+```sql
+CREATE TRIGGER trg_client_updated_at BEFORE UPDATE ON client
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+> **Não "conserte" isso gravando `updated_at` no service.** Seria divergir do padrão das outras 9
+> tabelas e mascarar a ausência do trigger em qualquer tabela futura. Se `updated_at` parar de avançar,
+> procure o trigger, não o código.
+
+## Histórico da migração — o que a conciliação final encontrou
+
+Registrado porque muda como conferir uma migração aqui. O cutover (2026-07-30) revelou que a **carga
+inicial de 27/07 estava incompleta**, e nada disso apareceu nas checagens óbvias:
+
+- **4 clientes reais faltando** na Core (ids 301–304). Foram criados na origem *depois* da carga,
+  enquanto a app seguia no ar — a app **não estava parada** apesar de várias tentativas de `pm2 stop`
+  (havia mais de um processo). Inseridos manualmente preservando os ids, porque **2 deles já tinham
+  `contracts` apontando para si** — recriar com id novo teria órfãozado os contratos em silêncio.
+- **1 divergência de `squad_id`** (cliente 298: `14` na Core, `NULL` na origem).
+- **`created_at`/`updated_at` deram falso negativo.** Filtrar `WHERE created_at > <carga>` retornou 0
+  mesmo havendo linhas novas (a medição foi feita antes delas existirem), e `updated_at` não avançava
+  por falta do trigger. **Não confie nesses campos para detectar delta.**
+
+**O que funcionou:** `COUNT(*)` nos dois lados + **checksum por coluna**
+(`md5(string_agg(coalesce(col,'~'),'|' ORDER BY id))`). A contagem entrega *que* há divergência; o
+checksum por coluna entrega *qual campo*, em uma rodada, sem recarregar nada. O checksum de linha
+inteira (`md5(ROW(...)::text)`) só serve como selo final — sozinho ele não localiza nada.
+
+Estado ao final: **297 linhas, `max(id)` 304, sequence 304**, hash idêntico nos dois bancos.
+
 ## ⚠️ As FKs de `client` são `NO ACTION` — afeta `DELETE` de OUTROS módulos
 
 Verificado no banco em 2026-07-30 (`pg_constraint.confdeltype`): as três FKs de `client` saíram da

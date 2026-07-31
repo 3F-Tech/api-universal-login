@@ -7,8 +7,15 @@ sistema/IA que vá integrar com esta API.
 - **SGBD:** PostgreSQL
 - **Fonte da verdade:** o **banco** (o schema do Prisma é *introspectado*, nunca escrito à mão).
 - **Convenção de nomes:** tabelas e colunas em `snake_case`.
-- **Timestamps:** `created_at` / `updated_at` são `timestamptz` (UTC). `updated_at` **não** é
-  atualizado por trigger no banco — quem grava é a API.
+- **Timestamps:** `created_at` / `updated_at` são `timestamptz` (UTC). **`updated_at` é atualizado por
+  trigger no banco** (`trg_<tabela>_updated_at` → `update_updated_at_column()`), em **todas** as
+  tabelas que têm a coluna. A API **não** grava esse campo — depende do trigger.
+  > ⚠️ Até 2026-07-30 este documento afirmava o oposto ("não é atualizado por trigger — quem grava é a
+  > API"). Era **falso** e causou dano real: a tabela `client` nasceu **sem** o trigger e ninguém notou,
+  > então `client.updated_at` ficou congelado no valor de criação. Isso invalidou uma tentativa de
+  > detectar registros editados por `updated_at` durante a migração de clientes. O trigger foi criado
+  > em 2026-07-30 (`trg_client_updated_at`). **Ao criar tabela nova, crie o trigger** — não assuma que
+  > a API cuida disso.
 - **Chaves primárias:** `id` `integer` autoincremento (serial), salvo onde indicado
   (`systems_users_access.id` é **BigInt**; `systems_bus` usa PK composta).
 
@@ -92,6 +99,8 @@ Recurso central de identidade. Guarda dados pessoais, de contato, endereço e os
 | `squad_id` | `int4` | sim | — | **FK** → `squad.id` |
 | `leader_id` | `int4` | sim | — | **FK** → `user.id` (**auto-referência**). Líder direto deste usuário |
 | `profile_picture` | `text` | sim | — | URL / caminho da foto / base64 |
+| `contract_link` | `varchar(500)` | sim | — | Link do contrato (ex.: Google Drive). **Sem relação** com nenhuma outra tabela |
+| `contract_base64` | `text` | sim | — | Base64 do contrato. **Sem relação** com nenhuma outra tabela. Mesmo padrão de omissão em listagem que `profile_picture` (ver `API.md`) |
 | `cep` | `varchar(9)` | sim | — | |
 | `street` | `varchar(200)` | sim | — | |
 | `street_number` | `varchar(20)` | sim | — | |
@@ -437,8 +446,19 @@ da Core apontando para `user`/`squad` são `SET NULL` (ou `CASCADE`, nos pivôs)
   `'em_cancelamento'` está em português entre dois valores em inglês; e `type` é `'pf'`/`'pj'`
   **minúsculo**, enquanto `contracts_templates.person_type` no sistema de gestão usa `'PJ'`
   maiúsculo.
-- **A tabela antiga `sistema_gestao.clients` ainda existe, intacta.** Durante a transição ela segue
-  sendo a fonte de verdade viva até o código migrar — ver a nota de cutover no material da migração.
+- **A tabela nasceu sem o trigger de `updated_at`** (as 8 outras tabelas da Core sempre tiveram).
+  Corrigido em 2026-07-30 com `trg_client_updated_at`. Antes disso, `client.updated_at` nunca avançava
+  em `UPDATE` — inclusive nas escritas via `PATCH /clients/:id`.
+- **Cutover concluído em 2026-07-30.** A `sistema_gestao.clients` deixou de ser a fonte de verdade; o
+  sistema de gestão passou a ler/gravar cliente pela Core. A tabela antiga continua no banco
+  (renomeação para `clients_legacy` é etapa posterior) — **mas com escrita revogada**, para que
+  qualquer referência esquecida no código falhe alto em vez de gravar em silêncio.
+- **A carga inicial (27/07) ficou incompleta e isso só apareceu na conciliação final.** Ao comparar
+  contagem + checksum por coluna entre os dois bancos, faltavam **4 clientes reais** na Core (ids 301,
+  302, 303, 304) e havia **1 divergência de `squad_id`** (cliente 298). Todos corrigidos. Lição para
+  migrações futuras: **`COUNT(*)` e checksum por coluna** são o que fecha a conta — filtro por
+  `created_at`/`updated_at` deu **falso negativo** (a app seguia escrevendo, e `updated_at` não
+  avançava por falta do trigger).
 
 ---
 

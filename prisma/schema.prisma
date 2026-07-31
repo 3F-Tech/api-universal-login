@@ -187,6 +187,8 @@ model user {
   created_at                                DateTime        @default(now()) @db.Timestamptz(6)
   updated_at                                DateTime        @default(now()) @db.Timestamptz(6)
   leader_id                                 Int?
+  contract_link                             String?         @db.VarChar(500)
+  contract_base64                           String?
   api_key                                   api_key[]
   band_band_created_byTouser                band[]          @relation("band_created_byTouser")
   client_client_created_byTouser            client[]        @relation("client_created_byTouser")

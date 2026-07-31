@@ -25,8 +25,10 @@ const SAFE_OMIT = { password: true } as const;
 // Na LISTAGEM omitimos TAMBÉM profile_picture: são imagens base64 (média ~1,6 MB,
 // chegando a 2,5 MB) que sozinhas levavam o GET /users a ~5,5 s. O front busca as
 // fotos da página visível à parte, via GET /users/photos?ids=... (listPhotos).
-// getById/create/update continuam com SAFE_OMIT (a tela de detalhe quer a foto).
-const LIST_OMIT = { password: true, profile_picture: true } as const;
+// contract_base64 segue o mesmo padrão preventivo (mesmo formato/risco de peso),
+// mesmo sem medição própria ainda — some da listagem, disponível em getById.
+// getById/create/update continuam com SAFE_OMIT (a tela de detalhe quer o conteúdo).
+const LIST_OMIT = { password: true, profile_picture: true, contract_base64: true } as const;
 
 /** Tipo do client dentro de uma transação (mesma superfície do prisma global). */
 type TxClient = Prisma.TransactionClient;

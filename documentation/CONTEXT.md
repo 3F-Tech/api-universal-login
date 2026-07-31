@@ -85,10 +85,10 @@ Scope embutido: `admin:*` (cobre todos os scopes).
 > `adm`, seu sistema **administra tudo**. O servidor recusa (com `403 INSUFFICIENT_SCOPE`) qualquer
 > ação fora do que o tipo da key permite — então o seu código deve assumir só o que o seu modo cobre.
 
-> ⚠️ **Clientes (`/clients`) exigem key `adm` hoje.** Os scopes `clients:read`/`clients:write` **não**
-> estão no tipo `login`, e não existe (ainda) um tipo intermediário para "só ler clientes". Se o seu
-> sistema precisa de dados de cliente sem ser um administrador completo, fale com um administrador da
-> Core — a solução é criar um tipo novo no catálogo, não montar scopes soltos.
+> **Clientes (`/clients`) exigem key `adm`.** Os scopes `clients:read`/`clients:write` **não** estão no
+> tipo `login`, e **não existirá** um tipo intermediário para "só ler clientes" — decisão tomada em
+> 2026-07-30. Se o seu sistema precisa consumir dados de cliente, ele recebe uma key `adm`; peça a um
+> administrador da Core.
 
 ---
 
@@ -153,9 +153,9 @@ Seu sistema administra o cadastro central. Padrões:
   batch: `POST /clients/batch` (`{ ids: [...] }`, máx. 200) e `GET /users/photos?ids=...` (máx. 50).
   Numa listagem, colete os ids distintos da página, faça **uma** chamada e monte um `Map` em memória.
   Chamada dentro de loop estoura o rate limit e é sempre um bug.
-- **Imagens não vêm em listagem.** `user.profile_picture` e `client.logo_picture` só aparecem no
-  detalhe (`GET /<recurso>/:id`) ou na rota de fotos em lote — são campos grandes e ficariam
-  proibitivos em respostas de múltiplos registros.
+- **Campos grandes não vêm em listagem.** `user.profile_picture`, `user.contract_base64` e
+  `client.logo_picture` só aparecem no detalhe (`GET /<recurso>/:id`) ou na rota de fotos em lote —
+  são campos grandes (base64 inline) e ficariam proibitivos em respostas de múltiplos registros.
 - **Rate limit por key:** ~100 req/min por padrão. Ao estourar: `429 RATE_LIMITED`. Implemente
   retry com backoff.
 - **Datas em UTC / ISO 8601.**

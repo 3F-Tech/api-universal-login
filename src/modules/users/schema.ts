@@ -89,6 +89,8 @@ export const createUserSchema = z.object({
   // updateUserSchema) presente = substitui todos, ausente = não mexe.
   bus: z.array(busLinkSchema).optional(),
   profile_picture: z.string().trim().nullish(),
+  contract_link: z.string().trim().max(500).nullish(),
+  contract_base64: z.string().trim().nullish(),
   cep: z.string().trim().max(9).nullish(),
   street: z.string().trim().max(200).nullish(),
   street_number: z.string().trim().max(20).nullish(),

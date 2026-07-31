@@ -71,10 +71,10 @@ Cada rota exige um scope no formato `<recurso>:<ação>`. Regras de cobertura:
 > **`clients` não tem scope `:delete`** — o recurso não expõe hard delete (ver §6.14). Desativar é
 > `PATCH { is_active: false }`, coberto por `clients:write`.
 >
-> ⚠️ **Os scopes de `clients` não estão em nenhum dos dois tipos de key abaixo.** Hoje só uma key
-> `adm` (`admin:*`) alcança `/clients/*`. Um sistema que precise apenas ler clientes ainda não tem
-> um tipo próprio — se isso for necessário, um administrador precisa decidir criar um tipo novo no
-> catálogo (`src/config/scopes.ts`), não montar scopes crus.
+> **`/clients/*` exige key `adm` (`admin:*`) — decisão tomada em 2026-07-30.** Os scopes
+> `clients:read`/`clients:write` existem no catálogo, mas **de propósito não** foram incluídos no tipo
+> `login`, e **não haverá** um tipo intermediário para "só ler clientes". Quem precisa de dados de
+> cliente recebe uma key `adm`. Não monte scopes crus nem crie tipo novo sem revisitar esta decisão.
 
 **Tipos de key** (o cliente pede um `type`, a API expande nos scopes):
 
@@ -236,15 +236,17 @@ Valida e-mail + senha do usuário **no contexto do sistema da API Key** e regist
 | `DELETE` | `/users/:id` | `users:delete` |
 
 **`GET /users`** — filtros (query): `page`, `perPage`, `is_active` (`true`/`false`). Lista **leve**:
-cada item vem **sem `password`** e **sem `profile_picture`** (base64 pesado — ver seção de fotos
-abaixo), com `bus: [...]` (BUs do usuário, cada uma com `from_squad`).
+cada item vem **sem `password`**, **sem `profile_picture`** e **sem `contract_base64`** (base64
+pesados — ver seção de fotos abaixo), com `bus: [...]` (BUs do usuário, cada uma com `from_squad`).
+`contract_link` **não** é omitido — aparece normal na listagem.
 
 **`GET /users/photos`** — busca **fotos em lote**, para hidratar a lista acima. Query
 `?ids=1,2,3` (CSV de inteiros positivos, deduplicado, **máx. 50 ids** por requisição). Resposta:
 mapa `{ "<id>": "<profile_picture ou null>" }` só com os ids que existem. Resposta traz header
 `Cache-Control: private, max-age=300` (é `GET`, não `POST`, de propósito — o navegador cacheia).
 
-**`GET /users/:id`** → item único + `bus`, **com** `profile_picture`. 404 `USER_NOT_FOUND`.
+**`GET /users/:id`** → item único + `bus`, **com** `profile_picture` e `contract_base64`. 404
+`USER_NOT_FOUND`.
 
 **`GET /users/:id/led`** — usuários **liderados** por `:id` (via `user.leader_id`), no mesmo formato
 leve de `GET /users` (paginado, sem `profile_picture`, com `bus`). Valida o líder (404
@@ -273,6 +275,8 @@ leve de `GET /users` (paginado, sem `profile_picture`, com `bus`). Valida o líd
 | `leader_id` | int | — | FK auto-referente → `user` (404 `LEADER_NOT_FOUND` se enviado e inexistente). Aceita `null` |
 | `bus` | array | — | `[{ "bu_id": int, "from_squad": bool=false }]` — grava os vínculos N:N |
 | `profile_picture` | string | — | URL / caminho / base64 |
+| `contract_link` | string | — | ≤500. Link do contrato (ex.: Google Drive). Sem relação com outra tabela |
+| `contract_base64` | string | — | Base64 do contrato. Omitido em `GET /users` (ver acima), disponível em `GET /users/:id` |
 | `cep`,`street`,`street_number`,`neighborhood`,`complement`,`city`,`state`,`country` | string | — | endereço (tamanhos variados) |
 | `is_active` | bool | — | default no banco = `true` |
 
@@ -659,8 +663,9 @@ Valida o usuário (404 `USER_NOT_FOUND`).
 ```json
 { "systems": [ { "system_id": 2, "role": "admin" }, { "system_id": 5, "role": "viewer" } ] }
 ```
-`role` é obrigatório por item; deduplica por `system_id`; valida cada sistema (404
-`SYSTEM_NOT_FOUND`). Resposta: a lista resultante `[{ system_id, role }]`.
+A chave `role` é obrigatória por item, mas o **valor aceita `null`** (sem papel específico naquele
+sistema — mesmo default do link único via `POST`); deduplica por `system_id`; valida cada sistema
+(404 `SYSTEM_NOT_FOUND`). Resposta: a lista resultante `[{ system_id, role }]`.
 
 ---
 
