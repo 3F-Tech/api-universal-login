@@ -16,6 +16,13 @@ clientsRouter.get(
 // Batch é POST (body carrega o array de ids), mas semanticamente é LEITURA em lote —
 // mata o N+1 do sistema_gestao ao hidratar clientes por id. Scope de read, não write.
 clientsRouter.post('/clients/batch', requireScope(SCOPES.clientsRead), controller.batch);
+// Atribuição/desvinculação de especialista em LOTE (carteira). Escrita → clientsWrite.
+// Path literal distinto (não conflita com /clients/:id, que não é POST).
+clientsRouter.post(
+  '/clients/assign-specialist',
+  requireScope(SCOPES.clientsWrite),
+  controller.assignSpecialist,
+);
 
 clientsRouter.get('/clients', requireScope(SCOPES.clientsRead), controller.list);
 clientsRouter.get('/clients/:id', requireScope(SCOPES.clientsRead), controller.getById);

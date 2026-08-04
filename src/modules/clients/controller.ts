@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import * as service from './service.js';
 import {
+  assignSpecialistBodySchema,
   batchClientIdsBodySchema,
   clientDocumentParamSchema,
   clientParamsSchema,
@@ -64,4 +65,9 @@ export async function update(req: Request, res: Response): Promise<void> {
   const { id } = clientParamsSchema.parse(req.params);
   const input = updateClientSchema.parse(req.body);
   sendItem(res, await service.update(id, input));
+}
+
+export async function assignSpecialist(req: Request, res: Response): Promise<void> {
+  const { specialist_id, client_ids } = assignSpecialistBodySchema.parse(req.body);
+  sendItem(res, await service.assignSpecialist(specialist_id, client_ids));
 }

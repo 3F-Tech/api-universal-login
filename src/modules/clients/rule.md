@@ -29,6 +29,7 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 | POST | `/clients/batch` | `clients:read` | `{ ids: number[] }` → clientes correspondentes (mata o N+1 do sistema_gestao). **Sem `logo_picture`** |
 | POST | `/clients` | `clients:write` | Cria |
 | PATCH | `/clients/:id` | `clients:write` | Atualiza (parcial) |
+| POST | `/clients/assign-specialist` | `clients:write` | Atribui/desvincula especialista a VÁRIOS clientes de uma vez (carteira) |
 | GET | `/squads/:squadId/clients` | `clients:read` | Clientes de um squad (via `client.squad_id`) |
 | GET | `/users/:userId/clients` | `clients:read` | Clientes atendidos por um especialista (via `client.specialist_id`) |
 
@@ -118,6 +119,37 @@ confirmada explicitamente com o usuário antes de implementar). Resolução adot
   guardar caminho de arquivo em object storage/CDN em vez de base64; quando isso acontecer é troca
   de conteúdo, sem mudar schema nem contrato.
 - **Sem hard delete** (ver aviso nos Endpoints acima). `DELETE` simplesmente não existe nas rotas.
+
+## Carteira — atribuição de especialista em lote (`POST /clients/assign-specialist`)
+
+A "carteira do especialista" é o vínculo `cliente → especialista de atendimento` (`client.specialist_id`).
+A Core é a fonte da verdade; a tela de carteira (no Sistema de Gestão) reatribui **N clientes de uma vez**.
+Fazer isso com `PATCH /clients/:id` seria uma chamada HTTP por cliente e estouraria o rate limit
+(~100/min) — por isso existe este endpoint de lote (`service.assignSpecialist`), espelhando o padrão de
+`linkUsers`/`unlinkUsers` de `systems-users`.
+
+```
+POST /clients/assign-specialist            (scope: clients:write)
+{ "specialist_id": 42, "client_ids": [12, 40, 291] }   // specialist_id: null = DESVINCULAR
+→ 200 { "data": { "specialist_id": 42, "updated": [12,40,291], "skipped": [], "count": 3 } }
+```
+
+- **`specialist_id: null` desvincula** todos os `client_ids` (`specialist_id → NULL`). Quando não-nulo, é
+  validado **uma vez** (404 `SPECIALIST_NOT_FOUND`), não por cliente.
+- **Valida "é `user`", NÃO "é Especialista".** `assertUserExists` só cobre a FK → `user`, então **qualquer**
+  id de usuário (dev, admin, inativo) passa. É **de propósito**: a Core fica genérica, sem acoplar ao cargo
+  "Especialista". Quem garante que o id é de um especialista real é o **backfill/atribuição do lado da
+  Gestão** (valida o `position_id` do cargo antes de gravar). **Não** assuma que este endpoint filtra por
+  cargo.
+- **Tolerante a ids inexistentes:** `client_ids` que não existem **não** derrubam o lote — voltam em
+  `skipped[]` (mesma filosofia do `POST /clients/batch`/`listByIds`). Decisão confirmada com o usuário.
+- **`updated[]` = ids GRAVADOS, não "valor mudou".** Reatribuir para o mesmo especialista devolve o id em
+  `updated` mesmo sem mudança real — o endpoint é **idempotente** (reatribuir não é erro).
+- **Teto de `MAX_BATCH_CLIENTS` (200) ids** por requisição (reusa o bound do batch de leitura).
+- Grava por id, **independentemente de `is_active`** (o chamador manda ids explícitos da própria lista).
+- `updated_at` avança pelo trigger `trg_client_updated_at` — o service não toca nele (ver seção do trigger).
+- **Escopo desta fase: só `specialist_id`.** `squad_id` não faz parte do payload (fase 2 — ver o pedido de
+  migração da carteira).
 
 ## `status` — 5 valores, acoplados ao CHECK do banco
 

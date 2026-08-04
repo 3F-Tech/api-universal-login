@@ -877,6 +877,7 @@ Os **IDs foram preservados** na migração, então `client_id` das tabelas locai
 | `GET` | `/clients/by-document/:document` | `clients:read` |
 | `GET` | `/clients/:id` | `clients:read` |
 | `POST` | `/clients/batch` | **`clients:read`** (leitura em lote) |
+| `POST` | `/clients/assign-specialist` | `clients:write` (escrita em lote) |
 | `POST` | `/clients` | `clients:write` |
 | `PATCH` | `/clients/:id` | `clients:write` |
 | `GET` | `/squads/:squadId/clients` | `clients:read` |
@@ -966,6 +967,33 @@ Resposta: **array** (item único, **não paginado**), ordenado por `id` asc, **s
   se precisar detectar faltantes.
 - **Uma chamada por página, nunca uma por item.** Se aparecer chamada dentro de loop, está errado.
 
+**`POST /clients/assign-specialist`** → `200`. **Atribuição de especialista em LOTE** (a "carteira do
+especialista"): vincula/desvincula **um** especialista a **vários** clientes numa única chamada. É o
+batch do `PATCH /clients/:id { specialist_id }` — existe porque a tela de carteira reatribui N clientes
+de uma vez, e fazer isso 1-a-1 estouraria o rate limit (~100/min). Scope **`clients:write`**. Body:
+```json
+{ "specialist_id": 42, "client_ids": [12, 40, 291] }
+```
+| Campo | Tipo | Regra |
+|---|---|---|
+| `specialist_id` | int \| null | **obrigatório**. `user.id` da Core (404 `SPECIALIST_NOT_FOUND` se enviado e inexistente). **`null` DESVINCULA** todos os `client_ids` (sem validação) |
+| `client_ids` | int[] | obrigatório, **1 a 200** ids positivos; duplicados são ignorados |
+
+Resposta:
+```json
+{ "data": { "specialist_id": 42, "updated": [12, 40, 291], "skipped": [], "count": 3 } }
+```
+- **`updated`** — ids que **existiam e receberam o `UPDATE`** (ordenados). É **idempotente**: reatribuir
+  para o mesmo especialista **ainda devolve o id em `updated`** — o array significa *"gravado"*, **não**
+  *"valor mudou"*. `count` = tamanho de `updated`.
+- **`skipped`** — ids do `client_ids` que **não existem** (ordenados). Mesma tolerância do
+  `POST /clients/batch`: id inexistente **não** derruba o lote nem gera erro — só não é gravado.
+- **Grava por id, independentemente de `is_active`/`status`** — o chamador manda a lista explícita da
+  própria tela. `specialist_id: null` limpa a carteira dos ids enviados.
+- ⚠️ **Valida apenas "é `user`", não "é especialista".** `specialist_id` só precisa existir na tabela
+  `user`; a Core **não** verifica se aquele usuário tem o cargo "Especialista" — é de propósito, mantém
+  a Core genérica. Garantir que o id é de um especialista real é responsabilidade de quem chama.
+
 **`POST /clients`** → `201`. Body:
 
 | Campo | Tipo | Obrig. | Regra |
@@ -1013,8 +1041,9 @@ são validados quando enviados com valor. Id inexistente → `404 NOT_FOUND` (**
 
 > **`specialist_id` está NULL em 100% dos clientes hoje** (na origem os únicos valores apontavam para
 > devs, não para especialistas reais, e foram descartados de propósito). Esta rota devolve lista
-> vazia até a atribuição começar a ser usada. Quando for, grave o **`user.id` da Core** — não o id
-> de usuário/seller do seu sistema.
+> vazia até a atribuição começar a ser usada. Para atribuir, use `POST /clients/assign-specialist`
+> (lote — recomendado para a tela de carteira) ou `PATCH /clients/:id { specialist_id }` (1-a-1).
+> Grave o **`user.id` da Core** — não o id de usuário/seller do seu sistema.
 
 ### Imagens (`logo_picture`)
 
@@ -1029,11 +1058,11 @@ mudar o contrato.
 
 | HTTP | `code` | Quando |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | `type`/`status` fora do enum, `document`/`name` ausentes, `ids` vazio ou > 200, `q` ausente |
+| 400 | `VALIDATION_ERROR` | `type`/`status` fora do enum, `document`/`name` ausentes, `ids`/`client_ids` vazio ou > 200, `specialist_id` ausente no assign, `q` ausente |
 | 404 | `CLIENT_NOT_FOUND` | `id`/`document` inexistente em `GET /clients/:id` e `GET /clients/by-document/:document` |
 | 404 | `NOT_FOUND` | **`PATCH` de id inexistente** — código genérico, não `CLIENT_NOT_FOUND` |
 | 404 | `SQUAD_NOT_FOUND` | `squad_id` inexistente (create/update) ou `:squadId` inexistente |
-| 404 | `SPECIALIST_NOT_FOUND` | `specialist_id` inexistente (create/update) ou `:userId` inexistente |
+| 404 | `SPECIALIST_NOT_FOUND` | `specialist_id` inexistente (create/update/assign) ou `:userId` inexistente |
 | 404 | `CREATED_BY_NOT_FOUND` | `created_by` inexistente no create |
 | 409 | `CONFLICT` | `document` duplicado (`details.target` inclui `document`) |
 
@@ -1091,6 +1120,6 @@ Para excluir nesses casos, primeiro desvincule os clientes (`PATCH /clients/:id`
 | `GET` | `/systems/:systemId/access-logs` · `/users/:userId/access-logs` · `/systems/:systemId/users/:userId/access-logs` · `/access-logs/stats` · `/access-logs/wrong-password` · `/access-logs/today` | `access-logs:read` |
 | `GET` | `/clients` · `/clients/search` · `/clients/by-document/:document` · `/clients/:id` · `/squads/:squadId/clients` · `/users/:userId/clients` | `clients:read` |
 | `POST` | `/clients/batch` *(leitura em lote)* | `clients:read` |
-| `POST` | `/clients` | `clients:write` |
+| `POST` | `/clients` · `/clients/assign-specialist` *(escrita em lote)* | `clients:write` |
 | `PATCH` | `/clients/:id` | `clients:write` |
 | `DELETE` | *(`/clients/:id` **não existe** — use `PATCH { is_active: false }`)* | — |

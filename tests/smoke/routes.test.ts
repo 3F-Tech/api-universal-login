@@ -29,6 +29,7 @@ const routes = [
   { method: 'get', path: '/clients/search?q=acme' }, // clients (busca)
   { method: 'get', path: '/clients/by-document/12345678900' }, // clients (lookup natural)
   { method: 'post', path: '/clients/batch' }, // clients (batch)
+  { method: 'post', path: '/clients/assign-specialist' }, // clients (atribuição de especialista em lote)
   { method: 'get', path: '/squads/1/clients' }, // clients (por squad)
   { method: 'get', path: '/users/1/clients' }, // clients (por especialista)
 ] as const;

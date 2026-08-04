@@ -34,6 +34,18 @@ export const batchClientIdsBodySchema = z.object({
 });
 export type BatchClientIdsBody = z.infer<typeof batchClientIdsBodySchema>;
 
+// POST /clients/assign-specialist — atribui/desvincula um especialista a VÁRIOS clientes numa ação
+// só (a tela de carteira reatribui N de uma vez; PATCH 1-a-1 estouraria o rate limit). Reusa o teto
+// de MAX_BATCH_CLIENTS do batch de leitura. `specialist_id: null` desvincula todos os client_ids.
+export const assignSpecialistBodySchema = z.object({
+  specialist_id: id.nullable(),
+  client_ids: z
+    .array(id)
+    .min(1, 'Informe ao menos um id em "client_ids".')
+    .max(MAX_BATCH_CLIENTS, `Máximo de ${MAX_BATCH_CLIENTS} ids por requisição.`),
+});
+export type AssignSpecialistBody = z.infer<typeof assignSpecialistBodySchema>;
+
 export const CLIENT_TYPES = ['pf', 'pj'] as const;
 
 /**

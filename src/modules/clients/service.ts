@@ -159,3 +159,42 @@ export async function update(id: number, input: UpdateClientInput) {
   const updated = await prisma.client.update({ where: { id }, data });
   return serialize(updated);
 }
+
+/**
+ * Atribui (ou desvincula, com `specialistId = null`) um especialista a VÁRIOS clientes numa única
+ * requisição — o batch do `PATCH /clients/:id { specialist_id }`, para a tela de carteira reatribuir
+ * N clientes de uma vez sem estourar o rate limit (~100/min).
+ *
+ * Semântica (espelha `linkUsers`/`unlinkUsers` de systems-users):
+ * - Valida o especialista UMA vez (404 `SPECIALIST_NOT_FOUND`), não por cliente. `null` desvincula.
+ *   `assertUserExists` só garante que é um `user` (FK) — NÃO que é do cargo "Especialista"; isso é de
+ *   propósito (a Core fica genérica; o backfill da Gestão valida o cargo antes de gravar).
+ * - **Tolerante:** ids inexistentes não derrubam o lote — voltam em `skipped` (igual ao `listByIds`).
+ * - `updated` = ids que EXISTIAM e receberam o UPDATE (não "valor mudou" — reatribuir para o mesmo
+ *   especialista devolve o id em `updated`; é idempotente).
+ *
+ * BigInt: `client.id` é bigserial, mas o filtro aceita `number` (`id?: bigint | number`) — mesmo
+ * padrão do `listByIds`; só o retorno vira `number` explícito. Sem `$transaction`: não há
+ * `DELETE /clients`, então os ids encontrados não somem entre o `findMany` e o `updateMany`.
+ */
+export async function assignSpecialist(specialistId: number | null, clientIds: number[]) {
+  if (specialistId != null) await assertUserExists(specialistId, 'SPECIALIST_NOT_FOUND');
+
+  const unique = [...new Set(clientIds)];
+  const found = await prisma.client.findMany({
+    where: { id: { in: unique } },
+    select: { id: true },
+  });
+  const updated = found.map((c) => Number(c.id)).sort((a, b) => a - b);
+  const updatedSet = new Set(updated);
+  const skipped = unique.filter((cid) => !updatedSet.has(cid)).sort((a, b) => a - b);
+
+  if (updated.length > 0) {
+    await prisma.client.updateMany({
+      where: { id: { in: updated } },
+      data: { specialist_id: specialistId },
+    });
+  }
+
+  return { specialist_id: specialistId, updated, skipped, count: updated.length };
+}
