@@ -25,9 +25,11 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 
 - **create** (`createUserSchema`): obrigatórios `name`, `email` (lowercase), `password` (8–72),
   `role`. Opcionais: dados pessoais (cpf, cnpj, phone, instagram…), endereço, FKs (`department_id`,
-  `position_id`, `band_id`, `squad_id`, `leader_id`), `bus` (array de vínculos) e `contract_link`/
-  `contract_base64` (contrato do usuário — link do Drive e base64, sem relação com nenhuma outra
-  tabela). Todos os campos opcionais (exceto `bus`) usam `.nullish()` — o cliente pode mandar `null`
+  `position_id`, `band_id`, `squad_id`, `leader_id`), `bus` (array de vínculos) e os 4 campos de
+  contrato — `contract_link`/`contract_base64` (link do Drive e base64) + `contract_id_clicksign`/
+  `envelope_id_clicksign` (ids do documento e do envelope na Clicksign, `varchar(100)`, chaves
+  opacas). Nenhum deles tem relação com outra tabela. Todos os campos opcionais (exceto `bus`)
+  usam `.nullish()` — o cliente pode mandar `null`
   em vez de omitir; `null` grava `null` na coluna (ver convenção em `../rule.md`).
 - **update** (`updateUserSchema`): `createUserSchema.partial()` — tudo opcional.
 - **bus link** (`busLinkSchema`): `{ bu_id, from_squad? = false }`. **`from_squad` vem do FRONT** —
@@ -109,6 +111,12 @@ duplicados → `409` (P2002, pelo error-handler).
   lista, o front busca via `GET /users/photos?ids=...` depois de renderizar os cards.
 - `GET /users` **também não** retorna `contract_base64` (mesmo `LIST_OMIT`) — só `/users/:id`. Não
   existe rota em lote pra contrato ainda (diferente de `/users/photos`); criar se surgir a necessidade.
-  `contract_link` **não** é omitido — aparece normal na listagem.
+  `contract_link`, `contract_id_clicksign` e `envelope_id_clicksign` **não** são omitidos — aparecem
+  normal na listagem (strings curtas, não têm o problema de peso do base64).
+- **Ids da Clicksign são chaves opacas.** A API só guarda e devolve `contract_id_clicksign` /
+  `envelope_id_clicksign` — **não** chama a Clicksign, não valida formato (só `≤100`) e não checa
+  se o id existe lá. Nenhum dos dois é `UNIQUE` no banco: o mesmo documento/envelope pode ser
+  referenciado por mais de um usuário sem virar 409. Na Clicksign um **envelope** agrupa
+  **documentos** — por isso são dois campos, não um.
 - A rota `/users/photos` fica registrada **antes** de `/users/:id` no router — senão `"photos"`
   casaria como `:id` e cairia no parse numérico (400).

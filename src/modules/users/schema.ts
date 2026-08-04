@@ -91,6 +91,13 @@ export const createUserSchema = z.object({
   profile_picture: z.string().trim().nullish(),
   contract_link: z.string().trim().max(500).nullish(),
   contract_base64: z.string().trim().nullish(),
+  // Ids do contrato na Clicksign: o do documento e o do envelope que o contém
+  // (na Clicksign um envelope agrupa documentos). São chaves opacas — a API só
+  // guarda e devolve, não chama a Clicksign. varchar(100) no banco (as chaves
+  // são UUIDs de ~36 chars), nullable e SEM unique: o mesmo documento/envelope
+  // pode ser referenciado por mais de um usuário sem virar 409.
+  contract_id_clicksign: z.string().trim().max(100).nullish(),
+  envelope_id_clicksign: z.string().trim().max(100).nullish(),
   cep: z.string().trim().max(9).nullish(),
   street: z.string().trim().max(200).nullish(),
   street_number: z.string().trim().max(20).nullish(),

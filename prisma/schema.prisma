@@ -189,6 +189,8 @@ model user {
   leader_id                                 Int?
   contract_link                             String?         @db.VarChar(500)
   contract_base64                           String?
+  contract_id_clicksign                     String?         @db.VarChar(100)
+  envelope_id_clicksign                     String?         @db.VarChar(100)
   api_key                                   api_key[]
   band_band_created_byTouser                band[]          @relation("band_created_byTouser")
   client_client_created_byTouser            client[]        @relation("client_created_byTouser")

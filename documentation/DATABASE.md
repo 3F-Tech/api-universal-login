@@ -101,6 +101,8 @@ Recurso central de identidade. Guarda dados pessoais, de contato, endereço e os
 | `profile_picture` | `text` | sim | — | URL / caminho da foto / base64 |
 | `contract_link` | `varchar(500)` | sim | — | Link do contrato (ex.: Google Drive). **Sem relação** com nenhuma outra tabela |
 | `contract_base64` | `text` | sim | — | Base64 do contrato. **Sem relação** com nenhuma outra tabela. Mesmo padrão de omissão em listagem que `profile_picture` (ver `API.md`) |
+| `contract_id_clicksign` | `varchar(100)` | sim | — | Id do **documento** do contrato na Clicksign. Chave opaca (UUID). **Sem UNIQUE** e **sem relação** com nenhuma outra tabela |
+| `envelope_id_clicksign` | `varchar(100)` | sim | — | Id do **envelope** da Clicksign que contém o documento acima. Chave opaca (UUID). **Sem UNIQUE** |
 | `cep` | `varchar(9)` | sim | — | |
 | `street` | `varchar(200)` | sim | — | |
 | `street_number` | `varchar(20)` | sim | — | |

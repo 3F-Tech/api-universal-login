@@ -238,7 +238,8 @@ Valida e-mail + senha do usuário **no contexto do sistema da API Key** e regist
 **`GET /users`** — filtros (query): `page`, `perPage`, `is_active` (`true`/`false`). Lista **leve**:
 cada item vem **sem `password`**, **sem `profile_picture`** e **sem `contract_base64`** (base64
 pesados — ver seção de fotos abaixo), com `bus: [...]` (BUs do usuário, cada uma com `from_squad`).
-`contract_link` **não** é omitido — aparece normal na listagem.
+`contract_link`, `contract_id_clicksign` e `envelope_id_clicksign` **não** são omitidos — aparecem
+normal na listagem (são strings curtas).
 
 **`GET /users/photos`** — busca **fotos em lote**, para hidratar a lista acima. Query
 `?ids=1,2,3` (CSV de inteiros positivos, deduplicado, **máx. 50 ids** por requisição). Resposta:
@@ -277,6 +278,8 @@ leve de `GET /users` (paginado, sem `profile_picture`, com `bus`). Valida o líd
 | `profile_picture` | string | — | URL / caminho / base64 |
 | `contract_link` | string | — | ≤500. Link do contrato (ex.: Google Drive). Sem relação com outra tabela |
 | `contract_base64` | string | — | Base64 do contrato. Omitido em `GET /users` (ver acima), disponível em `GET /users/:id` |
+| `contract_id_clicksign` | string | — | ≤100. Id do **documento** do contrato na Clicksign. Não é validado contra a Clicksign, não é único. Aparece normal na listagem |
+| `envelope_id_clicksign` | string | — | ≤100. Id do **envelope** da Clicksign que contém o documento. Mesmas regras do campo acima |
 | `cep`,`street`,`street_number`,`neighborhood`,`complement`,`city`,`state`,`country` | string | — | endereço (tamanhos variados) |
 | `is_active` | bool | — | default no banco = `true` |
 
