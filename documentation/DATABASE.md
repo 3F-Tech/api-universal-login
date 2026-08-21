@@ -141,11 +141,32 @@ Business Units. Suporta hierarquia (árvore) via `parent_id` apontando para outr
 | `is_active` | `boolean` | não | `true` | |
 | `created_at` | `timestamptz` | não | `now()` | |
 | `updated_at` | `timestamptz` | não | `now()` | |
+| `legal_name` | `text` | sim | — | Razão social (parte CONTRATANTE em contratos) |
+| `legal_nature` | `text` | sim | — | Natureza jurídica (ex.: `Sociedade Empresária Limitada`) |
+| `cnpj` | `varchar(18)` | sim | — | **SEM UNIQUE** — duas BUs podem operar sob o mesmo CNPJ (holding) |
+| `email` | `varchar(150)` | sim | — | E-mail institucional da BU. **SEM UNIQUE** |
+| `phone` | `varchar(20)` | sim | — | Telefone institucional |
+| `cep` | `varchar(9)` | sim | — | Endereço — mesmos nomes/tipos de `user` |
+| `street` | `varchar(200)` | sim | — | Logradouro |
+| `street_number` | `varchar(20)` | sim | — | String (há `123-A`, `S/N`) |
+| `complement` | `varchar(200)` | sim | — | |
+| `neighborhood` | `varchar(100)` | sim | — | Bairro |
+| `city` | `varchar(100)` | sim | — | |
+| `state` | `varchar(50)` | sim | — | UF. String livre (sem CHECK de 2 letras), igual `user.state` |
+| `country` | `varchar(50)` | sim | — | |
 
 **Índices:** `slug`, `parent_id`.
 
 **Relações:** filhos via auto-relação (`parent_id`); N:N com `system` (`systems_bus`) e `user`
 (`users_bus`); referenciada por `squad.bu_id`.
+
+**Identidade jurídica + endereço (2026-08-21):** as 13 colunas de `legal_name` a `country` foram
+adicionadas para que a BU possa figurar como parte **CONTRATANTE** no preâmbulo de contratos
+gerados por sistemas consumidores (antes a razão social ficava hardcoded no consumidor). Todas
+**nullable e sem default** — BUs pré-existentes ficam com `NULL` e continuam sendo criadas/editadas
+sem informar nada disso. Os campos de endereço usam **deliberadamente os mesmos nomes e tipos de
+`user`** (`cep`, `street`, `street_number`, `complement`, `neighborhood`, `city`, `state`,
+`country`), para haver uma convenção só de endereço na API.
 
 ---
 

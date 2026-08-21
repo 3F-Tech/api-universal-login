@@ -42,22 +42,42 @@ model band {
 }
 
 model bu {
-  id                  Int           @id @default(autoincrement())
-  name                String        @db.VarChar(100)
+  id                  Int      @id @default(autoincrement())
+  name                String   @db.VarChar(100)
   description         String?
-  slug                String        @unique @db.VarChar(100)
-  primary_color_hex   String?       @db.VarChar(7)
-  secondary_color_hex String?       @db.VarChar(7)
+  slug                String   @unique @db.VarChar(100)
+  primary_color_hex   String?  @db.VarChar(7)
+  secondary_color_hex String?  @db.VarChar(7)
   parent_id           Int?
   logo_picture        String?
-  is_active           Boolean       @default(true)
-  created_at          DateTime      @default(now()) @db.Timestamptz(6)
-  updated_at          DateTime      @default(now()) @db.Timestamptz(6)
-  bu                  bu?           @relation("buTobu", fields: [parent_id], references: [id], onUpdate: NoAction)
-  other_bu            bu[]          @relation("buTobu")
-  squad               squad[]
-  systems_bus         systems_bus[]
-  users_bus           users_bus[]
+  is_active           Boolean  @default(true)
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime @default(now()) @db.Timestamptz(6)
+
+  // Identidade jurídica + endereço da BU (2026-08-21). Usados como parte
+  // CONTRATANTE no preâmbulo dos contratos gerados pelo sistema de Automação
+  // de Contratos. Todos nullable: BU antiga fica com NULL e segue editável.
+  // `cnpj` SEM unique de propósito — BU que opera sob o CNPJ da holding
+  // compartilha o mesmo número com outra BU.
+  legal_name    String?
+  legal_nature  String?
+  cnpj          String?       @db.VarChar(18)
+  email         String?       @db.VarChar(150)
+  phone         String?       @db.VarChar(20)
+  // Endereço: MESMOS nomes e tamanhos de coluna que `user` já usa.
+  cep           String?       @db.VarChar(9)
+  street        String?       @db.VarChar(200)
+  street_number String?       @db.VarChar(20)
+  complement    String?       @db.VarChar(200)
+  neighborhood  String?       @db.VarChar(100)
+  city          String?       @db.VarChar(100)
+  state         String?       @db.VarChar(50)
+  country       String?       @db.VarChar(50)
+  bu            bu?           @relation("buTobu", fields: [parent_id], references: [id], onUpdate: NoAction)
+  other_bu      bu[]          @relation("buTobu")
+  squad         squad[]
+  systems_bus   systems_bus[]
+  users_bus     users_bus[]
 
   @@index([parent_id], map: "idx_bu_parent_id")
   @@index([slug], map: "idx_bu_slug")

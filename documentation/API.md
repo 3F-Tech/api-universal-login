@@ -369,6 +369,13 @@ Resposta **inclui a key crua uma única vez**:
 | `DELETE` | `/bus/:id` | `bus:delete` |
 
 **`GET /bus`** — filtros: `page`, `perPage`, `is_active`.
+Cada BU vem com o **shape completo da tabela** — incluindo os 13 campos de identidade jurídica e
+endereço (`legal_name`, `legal_nature`, `cnpj`, `email`, `phone`, `cep`, `street`, `street_number`,
+`complement`, `neighborhood`, `city`, `state`, `country`), com `null` onde não preenchido. **Não há
+projeção reduzida na listagem** (ao contrário de `GET /clients`, que omite `logo_picture`): quem
+monta um catálogo de BUs a partir de `GET /bus` já recebe tudo, sem precisar de um `GET /bus/:id`
+por BU. Vale igualmente para `GET /bus/tree` e para a BU embutida em `POST /auth/validate`,
+`GET /users/:id` e `GET /systems/with-bus`.
 
 **`GET /bus/tree`** — árvore hierárquica completa (item único, **não paginado**). Raízes têm
 `parent_id = null`; cada nó tem `children: [...]` recursivo:
@@ -389,9 +396,26 @@ Resposta **inclui a key crua uma única vez**:
 | `secondary_color_hex` | string | — | `#RRGGBB` |
 | `parent_id` | int | — | FK → `bu` (404 `BU_NOT_FOUND` se enviado e inexistente) |
 | `logo_picture` | string | — | URL / caminho |
+| `legal_name` | string | — | Razão social (parte CONTRATANTE em contratos) |
+| `legal_nature` | string | — | Natureza jurídica (ex.: `Sociedade Empresária Limitada`) |
+| `cnpj` | string | — | ≤18. Guardado **como enviado** (com ou sem máscara). **Não é único** |
+| `email` | string | — | ≤150, formato de e-mail, normalizado p/ minúsculas. **Não é único** |
+| `phone` | string | — | ≤20 |
+| `cep` | string | — | ≤9 |
+| `street` | string | — | ≤200 |
+| `street_number` | string | — | ≤20 (string: `123-A`, `S/N`) |
+| `complement` | string | — | ≤200 |
+| `neighborhood` | string | — | ≤100 |
+| `city` | string | — | ≤100 |
+| `state` | string | — | ≤50. UF — string livre, sem validação de 2 letras |
+| `country` | string | — | ≤50 |
 | `is_active` | bool | — | |
 
 **`PATCH /bus/:id`** — parcial. `parent_id` não pode ser o próprio `id` (400 `INVALID_PARENT`).
+Semântica de campo (a mesma de `users`/`clients`): **omitido** = não mexe no valor gravado;
+enviado como **`null`** = **limpa** o valor (grava `NULL`). Ou seja, `PATCH { "city": null }` apaga
+só a cidade e não toca em `legal_name`; e um `PATCH { "name": "..." }` sem os campos novos preserva
+tudo que já estava salvo neles.
 
 **`DELETE /bus/:id`** → `{ "id", "deleted": true }`. Cascateia `users_bus` e `systems_bus`.
 
