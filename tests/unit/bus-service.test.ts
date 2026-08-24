@@ -35,6 +35,7 @@ const CAMPOS_NOVOS = [
   'city',
   'state',
   'country',
+  'email_domain',
 ] as const;
 
 beforeEach(() => {
@@ -43,7 +44,7 @@ beforeEach(() => {
 });
 
 describe('bus service — persistência dos campos de contrato', () => {
-  it('create repassa os 13 campos novos ao Prisma', async () => {
+  it('create repassa todos os campos novos ao Prisma', async () => {
     await busService.create({
       name: 'Bomma',
       slug: 'bomma',
@@ -60,6 +61,7 @@ describe('bus service — persistência dos campos de contrato', () => {
       city: 'Cascavel',
       state: 'PR',
       country: 'Brasil',
+      email_domain: 'bommamkt.com.br',
     });
 
     expect(createMock).toHaveBeenCalledOnce();

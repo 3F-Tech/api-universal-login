@@ -73,6 +73,11 @@ model bu {
   city          String?       @db.VarChar(100)
   state         String?       @db.VarChar(50)
   country       String?       @db.VarChar(50)
+  // Domínio de e-mail corporativo da BU (2026-08-24). Guardado SEM "@" e em
+  // minúsculas (ex.: `3fventure.com.br`): quem consome concatena
+  // `usuario + "@" + email_domain`, então um "@" gravado junto viraria
+  // `usuario@@dominio`. A normalização é feita no Zod, na escrita.
+  email_domain  String?       @db.VarChar(255)
   bu            bu?           @relation("buTobu", fields: [parent_id], references: [id], onUpdate: NoAction)
   other_bu      bu[]          @relation("buTobu")
   squad         squad[]

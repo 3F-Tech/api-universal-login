@@ -68,6 +68,7 @@ export async function create(input: CreateBuInput) {
     city: input.city,
     state: input.state,
     country: input.country,
+    email_domain: input.email_domain,
     is_active: input.is_active,
   };
   return prisma.bu.create({ data });

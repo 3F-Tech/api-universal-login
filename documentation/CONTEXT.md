@@ -42,10 +42,18 @@ empresa — a 3F Venture ou uma de suas BUs —, e esses campos formam o preâmb
 **CONTRATANTE**. Antes cada sistema mantinha a razão social *hardcoded* no próprio código; agora a
 fonte da verdade é a Core, como já vale para `users` e `clients`.
 
-Dois pontos práticos para quem consome:
+Desde **2026-08-24** ela carrega também **`email_domain`** — o domínio corporativo da BU
+(`3fventure.com.br` para a 3F, `bommamkt.com.br` para a Bomma, etc.). Serve para **montar** o e-mail
+de um colaborador recém-contratado (`nome.sobrenome@<email_domain>`) e para **reconhecer** e-mail
+interno, coisas que hoje vivem como lista fixa dentro de cada consumidor.
 
-- **Todos os 13 campos são opcionais e podem vir `null`.** Uma BU só tem esses dados se alguém os
+Pontos práticos para quem consome:
+
+- **Todos os 14 campos são opcionais e podem vir `null`.** Uma BU só tem esses dados se alguém os
   preencheu. Trate `null` como "não cadastrado" — não assuma presença.
+- **`email_domain` vem sempre sem `@` e em minúsculas.** A API normaliza na escrita (remove `@`
+  inicial, aplica lowercase) e valida o formato, então `usuario + '@' + email_domain` é seguro sem
+  tratamento adicional — e não vale a pena normalizar de novo do seu lado.
 - **Os nomes de endereço são os mesmos de `user`** (`cep`, `street`, `street_number`, `complement`,
   `neighborhood`, `city`, `state`, `country`). É proposital: há uma convenção só de endereço na API,
   não um dialeto por entidade — o mesmo código de formatação serve para os dois.

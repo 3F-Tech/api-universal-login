@@ -54,6 +54,13 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
     `state` (≤50), `country` (≤50). Os nomes/limites de endereço são **deliberadamente iguais aos
     de `users`** — convenção única de endereço na API, não um dialeto por entidade. `state` é
     string livre (sem regex de UF) porque `user.state` também é.
+  - **`email_domain`** (2026-08-24, `.nullish()`, ≤255): domínio corporativo da BU. **Único campo do
+    módulo que NORMALIZA na escrita** — `.trim().toLowerCase()` + `.transform` removendo `@` inicial,
+    e só então `.pipe()` valida contra `^[a-z0-9.-]+\.[a-z]{2,}$`. A ordem importa: validar antes da
+    normalização rejeitaria `@Bomma.com.BR` justamente pelo `@`/maiúscula que nós íamos remover.
+    Motivo de normalizar na API em vez de confiar no front: quem consome monta
+    `usuario + '@' + email_domain`, então um `@` gravado junto viraria `usuario@@dominio` — e o dado
+    precisa ser confiável independentemente de qual cliente escreveu.
   - Campos nullable no banco usam `.nullish()` (cliente pode mandar `null`); ver convenção em `../rule.md`.
 - **update** (`updateBuSchema`): `createBuSchema.partial()` — todos os campos opcionais.
 

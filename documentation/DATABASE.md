@@ -154,6 +154,7 @@ Business Units. Suporta hierarquia (árvore) via `parent_id` apontando para outr
 | `city` | `varchar(100)` | sim | — | |
 | `state` | `varchar(50)` | sim | — | UF. String livre (sem CHECK de 2 letras), igual `user.state` |
 | `country` | `varchar(50)` | sim | — | |
+| `email_domain` | `varchar(255)` | sim | — | Domínio corporativo da BU, **sem `@` e em minúsculas** (ex.: `3fventure.com.br`) |
 
 **Índices:** `slug`, `parent_id`.
 
@@ -167,6 +168,17 @@ gerados por sistemas consumidores (antes a razão social ficava hardcoded no con
 sem informar nada disso. Os campos de endereço usam **deliberadamente os mesmos nomes e tipos de
 `user`** (`cep`, `street`, `street_number`, `complement`, `neighborhood`, `city`, `state`,
 `country`), para haver uma convenção só de endereço na API.
+
+**`email_domain` (2026-08-24):** domínio de e-mail corporativo da BU — a 3F usa `3fventure.com.br`,
+a Bomma `bommamkt.com.br`, e assim por diante. Serve para **montar** o e-mail de um colaborador
+recém-contratado (`nome.sobrenome@<email_domain>`) e para **reconhecer** e-mail interno (o que antes
+era lista hardcoded nos consumidores). Também nullable e sem default.
+
+O valor é guardado **sem `@` e em minúsculas**, e a API **normaliza na escrita** (remove `@` inicial,
+aplica lowercase) antes de validar contra `^[a-z0-9.-]+\.[a-z]{2,}$`. Isso é contrato, não
+coincidência: quem consome monta o e-mail concatenando `usuario + '@' + email_domain`, então um `@`
+gravado junto produziria `usuario@@dominio`. Como a normalização é da API, o dado no banco é
+confiável independentemente do cliente que escreveu.
 
 ---
 

@@ -369,9 +369,10 @@ Resposta **inclui a key crua uma única vez**:
 | `DELETE` | `/bus/:id` | `bus:delete` |
 
 **`GET /bus`** — filtros: `page`, `perPage`, `is_active`.
-Cada BU vem com o **shape completo da tabela** — incluindo os 13 campos de identidade jurídica e
-endereço (`legal_name`, `legal_nature`, `cnpj`, `email`, `phone`, `cep`, `street`, `street_number`,
-`complement`, `neighborhood`, `city`, `state`, `country`), com `null` onde não preenchido. **Não há
+Cada BU vem com o **shape completo da tabela** — incluindo os 14 campos de identidade jurídica,
+endereço e domínio (`legal_name`, `legal_nature`, `cnpj`, `email`, `phone`, `cep`, `street`,
+`street_number`, `complement`, `neighborhood`, `city`, `state`, `country`, `email_domain`), com
+`null` onde não preenchido. **Não há
 projeção reduzida na listagem** (ao contrário de `GET /clients`, que omite `logo_picture`): quem
 monta um catálogo de BUs a partir de `GET /bus` já recebe tudo, sem precisar de um `GET /bus/:id`
 por BU. Vale igualmente para `GET /bus/tree` e para a BU embutida em `POST /auth/validate`,
@@ -409,6 +410,7 @@ por BU. Vale igualmente para `GET /bus/tree` e para a BU embutida em `POST /auth
 | `city` | string | — | ≤100 |
 | `state` | string | — | ≤50. UF — string livre, sem validação de 2 letras |
 | `country` | string | — | ≤50 |
+| `email_domain` | string | — | ≤255. Domínio corporativo, **sem `@`** (ex.: `3fventure.com.br`). Normalizado na escrita — ver nota |
 | `is_active` | bool | — | |
 
 **`PATCH /bus/:id`** — parcial. `parent_id` não pode ser o próprio `id` (400 `INVALID_PARENT`).
@@ -416,6 +418,15 @@ Semântica de campo (a mesma de `users`/`clients`): **omitido** = não mexe no v
 enviado como **`null`** = **limpa** o valor (grava `NULL`). Ou seja, `PATCH { "city": null }` apaga
 só a cidade e não toca em `legal_name`; e um `PATCH { "name": "..." }` sem os campos novos preserva
 tudo que já estava salvo neles.
+
+> **`email_domain` é normalizado pela API na escrita.** Antes de validar, a API remove um `@` inicial
+> e aplica minúsculas — `"@Bommamkt.com.BR"` é gravado como `"bommamkt.com.br"`. Depois disso o valor
+> precisa casar com `^[a-z0-9.-]+\.[a-z]{2,}$`; o que não casar (string vazia, espaço, `@` no meio,
+> sem TLD) vira `400 VALIDATION_ERROR`, não dado quebrado.
+>
+> A garantia serve a quem **lê**: o valor no banco nunca tem `@` nem maiúscula, então
+> `usuario + "@" + email_domain` é seguro sem tratamento adicional. **Não normalize de novo no seu
+> lado** — não é necessário, e uma segunda normalização divergente só cria discrepância.
 
 **`DELETE /bus/:id`** → `{ "id", "deleted": true }`. Cascateia `users_bus` e `systems_bus`.
 

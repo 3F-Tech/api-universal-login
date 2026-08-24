@@ -22,6 +22,7 @@ const CAMPOS_NOVOS = [
   'city',
   'state',
   'country',
+  'email_domain',
 ] as const;
 
 const BU_COMPLETA = {
@@ -40,6 +41,7 @@ const BU_COMPLETA = {
   city: 'Cascavel',
   state: 'PR',
   country: 'Brasil',
+  email_domain: 'bommamkt.com.br',
 };
 
 describe('bus schema — identidade jurídica e endereço', () => {
@@ -50,7 +52,7 @@ describe('bus schema — identidade jurídica e endereço', () => {
     });
   });
 
-  it('create aceita os 13 campos novos', () => {
+  it('create aceita todos os campos novos', () => {
     expect(createBuSchema.parse(BU_COMPLETA)).toEqual(BU_COMPLETA);
   });
 
@@ -73,6 +75,35 @@ describe('bus schema — identidade jurídica e endereço', () => {
     expect(() =>
       createBuSchema.parse({ name: 'BU', slug: 'bu-x', email: 'nao-e-email' }),
     ).toThrow();
+  });
+
+  // --- email_domain: normalizado NA ESCRITA, não confiando no cliente ---
+
+  it.each([
+    ['bommamkt.com.br', 'bommamkt.com.br'],
+    ['@bommamkt.com.br', 'bommamkt.com.br'],
+    ['@Bommamkt.com.BR', 'bommamkt.com.br'],
+    ['  3FVenture.com.br  ', '3fventure.com.br'],
+    ['mail.seedagromarketing.com.br', 'mail.seedagromarketing.com.br'],
+  ])('normaliza email_domain %s -> %s', (entrada, esperado) => {
+    expect(updateBuSchema.parse({ email_domain: entrada }).email_domain).toBe(esperado);
+  });
+
+  it.each([
+    ['string vazia', ''],
+    ['só o @', '@'],
+    ['com espaço', 'bomma mkt.com.br'],
+    ['sem TLD', 'bommamkt'],
+    ['@ no meio', 'user@bommamkt.com.br'],
+    ['TLD de 1 letra', 'bommamkt.c'],
+    ['acima de 255 chars', `${'a'.repeat(260)}.com.br`],
+  ])('rejeita email_domain inválido (%s)', (_caso, valor) => {
+    expect(updateBuSchema.safeParse({ email_domain: valor }).success).toBe(false);
+  });
+
+  it('email_domain aceita null (limpa) e pode ser omitido', () => {
+    expect(updateBuSchema.parse({ email_domain: null }).email_domain).toBeNull();
+    expect(updateBuSchema.parse({ name: 'BU' })).not.toHaveProperty('email_domain');
   });
 
   // --- Semântica do PATCH (o requisito que o consumidor depende) ---

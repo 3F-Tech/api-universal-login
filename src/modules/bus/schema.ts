@@ -8,6 +8,32 @@ const hexColor = z
   .trim()
   .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato #RRGGBB');
 
+/**
+ * Domínio de e-mail corporativo da BU (ex.: `3fventure.com.br`).
+ *
+ * Normaliza NA ESCRITA (minúsculas + remove `@` inicial) antes de validar: quem
+ * consome monta o e-mail concatenando `usuario + '@' + email_domain`, então um
+ * `@` gravado junto produziria `usuario@@dominio`. Normalizar aqui garante que
+ * nenhum cliente da API consiga sujar o dado — não depende de o front colaborar.
+ *
+ * A validação roda DEPOIS da normalização (via `.pipe`), senão `@Bomma.com.BR`
+ * seria rejeitado por causa do `@` e do maiúsculo que nós mesmos íamos remover.
+ */
+const emailDomain = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((value) => value.replace(/^@+/, ''))
+  .pipe(
+    z
+      .string()
+      .max(255)
+      .regex(
+        /^[a-z0-9.-]+\.[a-z]{2,}$/,
+        'Domínio inválido. Informe só o domínio, sem "@" (ex.: 3fventure.com.br).',
+      ),
+  );
+
 export const buParamsSchema = z.object({ id });
 
 // Convenção (CLAUDE.md): query só carrega `is_active` + paginação. Filtro por
@@ -53,6 +79,9 @@ export const createBuSchema = z.object({
   city: z.string().trim().max(100).nullish(),
   state: z.string().trim().max(50).nullish(),
   country: z.string().trim().max(50).nullish(),
+  // Domínio corporativo da BU — usado para montar o e-mail do colaborador
+  // (`nome.sobrenome@<email_domain>`) e para reconhecer e-mail interno.
+  email_domain: emailDomain.nullish(),
   is_active: z.boolean().optional(),
 });
 
