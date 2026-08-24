@@ -30,6 +30,26 @@ identidade da Core via HTTP e manter localmente **só** os campos que só você 
 primeiro na Core** e só depois faça o upsert local com o id retornado — as duas operações não são
 atômicas (bancos diferentes), e a ordem inversa criaria overlay órfão apontando para id inexistente.
 
+### A BU também é uma entidade jurídica
+
+Desde **2026-08-21** a **BU** (`/bus`) deixou de ser só identidade visual (nome, slug, cores, logo):
+ela carrega também **identidade jurídica e endereço** — `legal_name` (razão social), `legal_nature`
+(natureza jurídica), `cnpj`, `email`, `phone`, e o endereço completo (`cep`, `street`,
+`street_number`, `complement`, `neighborhood`, `city`, `state`, `country`).
+
+O motivo é contratual: nos contratos gerados pelos sistemas da 3F, quem **contrata** é a própria
+empresa — a 3F Venture ou uma de suas BUs —, e esses campos formam o preâmbulo da parte
+**CONTRATANTE**. Antes cada sistema mantinha a razão social *hardcoded* no próprio código; agora a
+fonte da verdade é a Core, como já vale para `users` e `clients`.
+
+Dois pontos práticos para quem consome:
+
+- **Todos os 13 campos são opcionais e podem vir `null`.** Uma BU só tem esses dados se alguém os
+  preencheu. Trate `null` como "não cadastrado" — não assuma presença.
+- **Os nomes de endereço são os mesmos de `user`** (`cep`, `street`, `street_number`, `complement`,
+  `neighborhood`, `city`, `state`, `country`). É proposital: há uma convenção só de endereço na API,
+  não um dialeto por entidade — o mesmo código de formatação serve para os dois.
+
 ### Modelo de integração: backend-to-backend
 
 - A comunicação é **servidor ↔ servidor**. **Nunca** chame esta API direto do navegador/app do
@@ -70,6 +90,12 @@ O que essa key **NÃO** pode: criar/editar/excluir nada, gerenciar API Keys, ver
 
 Scopes embutidos: `auth:validate`, `users:read`, `bus:read`, `systems:read`, `positions:read`,
 `departments:read`, `bands:read`, `squads:read`.
+
+> **`bus:read` inclui a identidade jurídica da BU.** Como `GET /bus` devolve o registro completo, um
+> sistema em modo login também enxerga `legal_name`, `cnpj`, `email`, `phone` e o endereço das BUs.
+> São dados institucionais da própria 3F (os mesmos que aparecem impressos num contrato), não dados
+> pessoais de terceiros — mas se o seu sistema só precisa de nome/cores para a tela pós-login,
+> simplesmente ignore os demais campos.
 
 ### 🛡️ Modo ADM — key do tipo `adm`
 
@@ -134,6 +160,9 @@ Seu sistema administra o cadastro central. Padrões:
   `POST /systems/:systemId/users` ou `PUT /users/:userId/systems`.
 - **Resetar a senha de um usuário** para a senha padrão da 3F: `POST /users/:id/reset-password`
   (exige key `adm` / `admin:*`).
+- **Preencher a identidade jurídica de uma BU** (razão social, CNPJ, natureza jurídica, endereço,
+  para uso em contratos): `PATCH /bus/:id`. Enviar um campo como **`null` limpa** o valor;
+  **omitir** o campo não mexe nele.
 - **Gerenciar API Keys** de outros sistemas: `POST /api-keys` (escolhendo `type: "adm" | "login"`).
   A key crua só aparece **uma vez** na criação — capture e entregue com segurança.
 - **Auditar acessos**: `GET /systems/:systemId/access-logs` e `GET /users/:userId/access-logs`.
@@ -156,6 +185,9 @@ Seu sistema administra o cadastro central. Padrões:
 - **Campos grandes não vêm em listagem.** `user.profile_picture`, `user.contract_base64` e
   `client.logo_picture` só aparecem no detalhe (`GET /<recurso>/:id`) ou na rota de fotos em lote —
   são campos grandes (base64 inline) e ficariam proibitivos em respostas de múltiplos registros.
+- **`GET /bus` é exceção: devolve o registro completo**, identidade jurídica e endereço inclusos.
+  Não há projeção reduzida ali, então dá para montar um catálogo de BUs numa **única** chamada, sem
+  precisar de um `GET /bus/:id` por BU. Não generalize o comportamento de `clients` para `bus`.
 - **Rate limit por key:** ~100 req/min por padrão. Ao estourar: `429 RATE_LIMITED`. Implemente
   retry com backoff.
 - **Datas em UTC / ISO 8601.**
