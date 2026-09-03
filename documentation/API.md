@@ -492,12 +492,27 @@ Paginado; líder flutua para o topo da página (`is_leader: true`). Valida o squ
 |---|---|---|
 | `GET` | `/departments` | `departments:read` |
 | `GET` | `/departments/:id` | `departments:read` |
+| `GET` | `/departments/:id/positions` | **`positions:read`** (devolve dados de cargo) |
+| `GET` | `/departments/:id/users` | **`users:read`** (devolve PII) |
 | `POST` | `/departments` | `departments:write` |
 | `PATCH` | `/departments/:id` | `departments:write` |
 | `DELETE` | `/departments/:id` | `departments:delete` |
 
 **`GET /departments`** — filtros: `page`, `perPage`, `is_active`.
 **`GET /departments/:id`** → 404 `DEPARTMENT_NOT_FOUND`.
+
+**`GET /departments/:id/positions`** — cargos do departamento (via `position.department_id`),
+paginado, filtros `page`/`perPage`/`is_active` (mesmo shape de item de `GET /positions`). Valida o
+departamento (404 `DEPARTMENT_NOT_FOUND`).
+
+**`GET /departments/:id/users`** — usuários do departamento (via `user.department_id`), paginado,
+mesmo formato **leve** de `GET /users` (sem `password`/`profile_picture`/`contract_base64`, com
+`bus`). Valida o departamento (404 `DEPARTMENT_NOT_FOUND`).
+
+> `GET /users` **não** aceita `?department_id=` como filtro — a query pública de usuário só carrega
+> `is_active` + paginação (§5). Antes de 2026-09-03 o param era aceito na query string e
+> **silenciosamente ignorado** (sem erro, devolvia a lista inteira); a correção substituiu isso por
+> esta rota dedicada, em vez de fazer o param passar a filtrar.
 
 **`POST /departments`** → `201`. Body:
 
@@ -523,13 +538,20 @@ Paginado; líder flutua para o topo da página (`is_leader: true`). Valida o squ
 | `PATCH` | `/positions/:id` | `positions:write` |
 | `DELETE` | `/positions/:id` | `positions:delete` |
 
-**`GET /positions`** — filtros: `page`, `perPage`, `is_active`.
+Ver também `GET /departments/:id/positions` (§6.7) — cargos de **um** departamento.
+
+**`GET /positions`** — filtros: `page`, `perPage`, `is_active`. **Não** filtra por
+`department_id` — esse recorte é a rota `GET /departments/:id/positions` (convenção de params
+do §5: query só carrega `is_active` + paginação).
 **`GET /positions/:id`** → 404 `POSITION_NOT_FOUND`.
 
 **`POST /positions`** → `201`. Body: `name` (✅, 1–100), `is_active?`, `created_by?`
-(FK → `user`, validado se enviado → 404 `CREATED_BY_NOT_FOUND`).
+(FK → `user`, validado se enviado → 404 `CREATED_BY_NOT_FOUND`), `department_id?` (FK → `department`,
+`.nullish()` — aceita `null`; validado se enviado com valor → 404 `DEPARTMENT_NOT_FOUND`. Departamento
+dono do cargo, ex.: "Closer" → Comercial).
 
-**`PATCH /positions/:id`** — `name?`, `is_active?`. **`DELETE`** → `{ "id", "deleted": true }`.
+**`PATCH /positions/:id`** — `name?`, `is_active?`, `department_id?` (mesma validação/aceita `null`
+do create). **`DELETE`** → `{ "id", "deleted": true }`.
 
 ---
 
@@ -1140,6 +1162,8 @@ Para excluir nesses casos, primeiro desvincule os clientes (`PATCH /clients/:id`
 | `PATCH` | `/squads/:id` | `squads:write` |
 | `DELETE` | `/squads/:id` | `squads:delete` |
 | `GET/POST/PATCH/DELETE` | `/departments[/:id]` | `departments:{read,write,delete}` |
+| `GET` | `/departments/:id/positions` | `positions:read` |
+| `GET` | `/departments/:id/users` | `users:read` |
 | `GET/POST/PATCH/DELETE` | `/positions[/:id]` | `positions:{read,write,delete}` |
 | `GET/POST/PATCH/DELETE` | `/bands[/:id]` | `bands:{read,write,delete}` |
 | `GET` | `/systems` · `/systems/with-bus` · `/systems/:id` | `systems:read` |

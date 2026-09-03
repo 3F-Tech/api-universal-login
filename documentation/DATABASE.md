@@ -62,6 +62,8 @@ bu ─────── bu                   (parent_id → árvore)
 squad ──┬──> bu                 (bu_id)
         └──> user               (leader_id)
 
+position ─> department          (department_id, nullable)
+
 systems_users ──< systems_users_access   (systems_users_id, CASCADE)
 
 client ─┬──> squad              (squad_id, sem CASCADE)
@@ -218,7 +220,7 @@ Departamentos.
 | `updated_at` | `timestamptz` | não | `now()` | |
 | `created_by` | `int4` | sim | — | **FK** → `user.id`. Nullable no banco, **exigido no create** pela API |
 
-**Relações:** referenciada por `user.department_id`.
+**Relações:** referenciada por `user.department_id` e por `position.department_id`.
 
 ---
 
@@ -234,8 +236,11 @@ Cargos. ⚠️ `position` é palavra reservada em SQL — sempre tratada com asp
 | `created_at` | `timestamptz` | não | `now()` | |
 | `updated_at` | `timestamptz` | não | `now()` | |
 | `created_by` | `int4` | sim | — | **FK** → `user.id`. Nullable no banco, **exigido no create** pela API |
+| `department_id` | `int4` | sim | — | **FK** → `department.id`. Nullable, opcional (2026-09-03) — departamento dono do cargo, para derivar responsável de onboarding a partir do cargo |
 
-**Relações:** referenciada por `user.position_id`.
+**Índice:** `department_id`.
+
+**Relações:** referenciada por `user.position_id`; referencia `department.id` (`department_id`).
 
 ---
 
