@@ -17,6 +17,7 @@ export const createPositionSchema = z.object({
   name: z.string().trim().min(1).max(100),
   is_active: z.boolean().optional(),
   created_by: id.optional(),
+  department_id: id.nullish(),
 });
 
 export type CreatePositionInput = z.infer<typeof createPositionSchema>;
@@ -24,6 +25,7 @@ export type CreatePositionInput = z.infer<typeof createPositionSchema>;
 export const updatePositionSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   is_active: z.boolean().optional(),
+  department_id: id.nullish(),
 });
 
 export type UpdatePositionInput = z.infer<typeof updatePositionSchema>;

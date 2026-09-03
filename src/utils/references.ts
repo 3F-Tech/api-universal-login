@@ -33,3 +33,12 @@ export async function assertSquadExists(id: number): Promise<void> {
     throw new NotFoundError(`Squad com id ${id} não encontrado.`, { code: 'SQUAD_NOT_FOUND' });
   }
 }
+
+export async function assertDepartmentExists(id: number): Promise<void> {
+  const found = await prisma.department.findUnique({ where: { id }, select: { id: true } });
+  if (!found) {
+    throw new NotFoundError(`Departamento com id ${id} não encontrado.`, {
+      code: 'DEPARTMENT_NOT_FOUND',
+    });
+  }
+}

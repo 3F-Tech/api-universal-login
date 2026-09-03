@@ -3,7 +3,11 @@ import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import { hashPassword } from '../../utils/bcrypt.js';
 import { NotFoundError, ValidationError } from '../../utils/errors.js';
-import { assertBuExists, assertUserExists } from '../../utils/references.js';
+import {
+  assertBuExists,
+  assertDepartmentExists,
+  assertUserExists,
+} from '../../utils/references.js';
 import { toSkipTake, type PaginationQuery } from '../../utils/pagination.js';
 import type { CreateUserInput, ListUsersQuery, UpdateUserInput } from './schema.js';
 
@@ -17,6 +21,7 @@ export type UserListFilters = PaginationQuery & {
   is_active?: boolean;
   squad_id?: number;
   leader_id?: number;
+  department_id?: number;
 };
 
 // Nunca devolvemos o hash da senha nas respostas.
@@ -86,10 +91,12 @@ async function fetchBusByUser(userIds: number[]) {
 function buildWhere(query: UserListFilters): Prisma.userWhereInput {
   const where: Prisma.userWhereInput = {};
   if (query.is_active !== undefined) where.is_active = query.is_active;
-  // squad_id e leader_id não são params públicos: vêm de rotas dedicadas
-  // (GET /squads/:id/users e GET /users/:id/led) por delegação.
+  // squad_id, leader_id e department_id não são params públicos: vêm de rotas
+  // dedicadas (GET /squads/:id/users, GET /users/:id/led, GET /departments/:id/users)
+  // por delegação.
   if (query.squad_id !== undefined) where.squad_id = query.squad_id;
   if (query.leader_id !== undefined) where.leader_id = query.leader_id;
+  if (query.department_id !== undefined) where.department_id = query.department_id;
   return where;
 }
 
@@ -135,6 +142,15 @@ export async function listPhotos(ids: number[]): Promise<Record<number, string |
 export async function listLed(leaderId: number, query: ListUsersQuery) {
   await assertUserExists(leaderId, 'LEADER_NOT_FOUND');
   return list({ ...query, leader_id: leaderId });
+}
+
+/**
+ * Usuários de um departamento (rota `GET /departments/:id/users`). Resposta leve
+ * idêntica ao `GET /users` (sem foto, com `bus`).
+ */
+export async function listByDepartment(departmentId: number, query: PaginationQuery) {
+  await assertDepartmentExists(departmentId);
+  return list({ ...query, department_id: departmentId });
 }
 
 export async function getById(id: number) {

@@ -16,9 +16,20 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
 |---|---|---|---|
 | GET | `/departments` | `departments:read` | Lista (filtro `is_active`; paginado) |
 | GET | `/departments/:id` | `departments:read` | Um departamento |
+| GET | `/departments/:id/positions` | `positions:read` | Cargos do departamento (paginado) |
+| GET | `/departments/:id/users` | `users:read` | Usuários do departamento (paginado) |
 | POST | `/departments` | `departments:write` | Cria |
 | PATCH | `/departments/:id` | `departments:write` | Edita `name`/`icon`/`is_active` |
 | DELETE | `/departments/:id` | `departments:delete` | **Hard delete** |
+
+**`GET /departments/:id/positions` e `GET /departments/:id/users` usam o scope do recurso
+retornado**, não `departments:*` (mesmo padrão de `GET /squads/:id/users`) — quem só tem
+`departments:read` não acessa; precisa de `positions:read`/`users:read`. Ambos delegam:
+`positionsService.listByDepartment` / `usersService.listByDepartment` (ver `positions/rule.md` e
+`users/rule.md`). Existem por causa da convenção de params do `CLAUDE.md`: `GET /users` **não**
+aceita `?department_id=` como filtro — antes de 2026-09-03 o param era aceito pela query string e
+silenciosamente ignorado (sem erro, devolvia a lista inteira), o que dava falsa impressão de filtro
+funcionando; a correção foi mover para esta rota dedicada, não fazer o param filtrar.
 
 ## Schema (Zod) — `schema.ts`
 
@@ -38,6 +49,13 @@ Todos exigem header `X-API-Key`. Scope por rota (ver `routes.ts`):
   Quando informado, o service valida que o usuário existe antes de criar.
 - **DELETE = hard delete.** `is_active` é independente, mexido só via `PATCH { is_active }`
   (soft-disable, não soft-delete).
+
+## Controller — `controller.ts`
+
+- `listPositions`/`listUsers` são as duas rotas dedicadas de filtro por departamento. Não chamam
+  `departmentsService` — importam `positionsService`/`usersService` diretamente (cross-module,
+  mesmo padrão de `squadsService` chamando `usersService`) e usam os schemas de query dos módulos
+  de destino (`listPositionsQuerySchema`, `paginationQuerySchema`).
 
 ## Service — `service.ts`
 

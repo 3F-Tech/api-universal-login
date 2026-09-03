@@ -16,6 +16,7 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 | GET | `/users/photos` | `users:read` | **Fotos em lote**: `?ids=1,2,3` → mapa `{ id: profile_picture }` |
 | GET | `/users/:id` | `users:read` | Um usuário (+ `bus`, **com** `profile_picture`) |
 | GET | `/users/:id/led` | `users:read` | **Liderados** por `:id` (via `leader_id`) — lista leve, sem foto |
+| GET | `/departments/:id/users` | `users:read` | **Usuários de um departamento** (via `department_id`) — lista leve, mesma rota registrada em `departments/routes.ts` |
 | POST | `/users` | `users:write` | Cria usuário (+ vínculos de BU opcionais) |
 | PATCH | `/users/:id` | `users:write` | Atualiza (campos parciais; pode substituir `bus`) |
 | DELETE | `/users/:id` | `users:delete` | **Hard delete** (vínculos `users_bus` caem por CASCADE) |
@@ -37,8 +38,11 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   **não** sincroniza com `squad.bu_id`.
 - **list query** (`listUsersQuerySchema`): só `is_active` + `page`/`perPage` (convenção de params do
   CLAUDE.md). Os filtros antigos (`bu_id`, `q`, `department_id`) viraram/virarão rotas dedicadas; o
-  `squad_id` e `leader_id` sobrevivem como filtros **internos** (`UserListFilters`), usados pelas
-  rotas `GET /squads/:id/users` e `GET /users/:id/led`.
+  `squad_id`, `leader_id` e (desde 2026-09-03) `department_id` sobrevivem como filtros **internos**
+  (`UserListFilters`), usados pelas rotas `GET /squads/:id/users`, `GET /users/:id/led` e
+  `GET /departments/:id/users`. **`?department_id=` na query pública de `GET /users` continua sem
+  efeito** (Zod descarta a chave desconhecida) — não é bug, é a convenção; quem precisa filtrar por
+  departamento usa a rota dedicada.
 - **photos query** (`userPhotosQuerySchema`): `ids` = CSV de inteiros positivos na query
   (`?ids=1,2,3`), **deduplicado** e limitado a **`MAX_PHOTO_IDS` (50)** por requisição.
 
@@ -77,6 +81,9 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   (só ids existentes; foto pode ser `null`).
 - `listLed(leaderId, query)` — valida o líder e delega para `list` filtrando por `leader_id`
   (rota `GET /users/:id/led`); resposta leve idêntica ao `GET /users` (sem foto, com `bus`).
+- `listByDepartment(departmentId, query)` — valida o departamento (`assertDepartmentExists`) e
+  delega para `list` filtrando por `department_id` (rota `GET /departments/:id/users`, controller
+  mora em `departments/controller.ts`); mesma resposta leve.
 - `list` embute `bus` em cada usuário via o Map acima; `getById`/`create`/`update` via `fetchUserBus`.
 - `remove` = hard delete (vínculos somem por `ON DELETE CASCADE`).
 - `resetPassword(id)` — valida o user (404 `USER_NOT_FOUND`) e faz `update` gravando

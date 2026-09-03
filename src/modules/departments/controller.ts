@@ -1,13 +1,16 @@
 import type { Request, Response } from 'express';
 import * as departmentsService from './service.js';
+import * as positionsService from '../positions/service.js';
+import * as usersService from '../users/service.js';
 import {
   createDepartmentSchema,
   departmentParamsSchema,
   listDepartmentsQuerySchema,
   updateDepartmentSchema,
 } from './schema.js';
+import { listPositionsQuerySchema } from '../positions/schema.js';
 import { sendItem, sendList } from '../../utils/http.js';
-import { buildMeta } from '../../utils/pagination.js';
+import { buildMeta, paginationQuerySchema } from '../../utils/pagination.js';
 
 export async function list(req: Request, res: Response): Promise<void> {
   const query = listDepartmentsQuerySchema.parse(req.query);
@@ -18,6 +21,20 @@ export async function list(req: Request, res: Response): Promise<void> {
 export async function getById(req: Request, res: Response): Promise<void> {
   const { id } = departmentParamsSchema.parse(req.params);
   sendItem(res, await departmentsService.getById(id));
+}
+
+export async function listPositions(req: Request, res: Response): Promise<void> {
+  const { id } = departmentParamsSchema.parse(req.params);
+  const query = listPositionsQuerySchema.parse(req.query);
+  const { data, total } = await positionsService.listByDepartment(id, query);
+  sendList(res, data, buildMeta(total, query));
+}
+
+export async function listUsers(req: Request, res: Response): Promise<void> {
+  const { id } = departmentParamsSchema.parse(req.params);
+  const query = paginationQuerySchema.parse(req.query);
+  const { data, total } = await usersService.listByDepartment(id, query);
+  sendList(res, data, buildMeta(total, query));
 }
 
 export async function create(req: Request, res: Response): Promise<void> {
