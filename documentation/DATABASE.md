@@ -416,11 +416,11 @@ sistema fica na tabela de overlay dele (no sistema de gestão: `client_settings`
 | `representative_cpf` | `text` | sim | — | Sem pontuação (só dígitos) |
 | `representative_email` | `text` | sim | — | |
 | `status` | `varchar(20)` | não | `'active'` | **CHECK** com **5** valores (ver nota). Ciclo de vida **comercial** — não confundir com `is_active` |
-| `squad_id` | `int4` | sim | — | **FK** → `squad.id` (**ON DELETE NO ACTION** — ver nota) |
-| `specialist_id` | `int4` | sim | — | **FK** → `user.id` (**NO ACTION**). Especialista de atendimento. **100% NULL hoje** |
+| `squad_id` | `int4` | sim | — | **FK** → `squad.id` (**ON DELETE SET NULL**) |
+| `specialist_id` | `int4` | sim | — | **FK** → `user.id` (**ON DELETE SET NULL**). Especialista de atendimento |
 | `logo_picture` | `text` | sim | — | Caminho/base64 do logo. **Vazio em todos os registros hoje** |
 | `is_active` | `boolean` | não | `true` | Soft-delete do registro — **não** é "cliente ativo", ver nota |
-| `created_by` | `int4` | sim | — | **FK** → `user.id` (**NO ACTION**). **100% NULL hoje**. Coluna **nova** na migração |
+| `created_by` | `int4` | sim | — | **FK** → `user.id` (**ON DELETE SET NULL**). Coluna **nova** na migração |
 | `created_at` | `timestamptz` | não | `now()` | Preservado da tabela original |
 | `updated_at` | `timestamptz` | não | `now()` | Preservado da tabela original |
 
@@ -466,16 +466,12 @@ Decisão consciente da migração. **Não** são redundantes:
 > esconder registro excluído. **Quem filtrar `is_active = true` esperando "clientes ativos" vai
 > trazer os churns junto.**
 
-### ⚠️ As FKs de `client` são `ON DELETE NO ACTION` (assimetria com o resto da Core)
+### FKs de `client` são `ON DELETE SET NULL`
 
-Verificado em `pg_constraint`: as três FKs de `client` são `NO ACTION`, enquanto todas as outras FKs
-da Core apontando para `user`/`squad` são `SET NULL` (ou `CASCADE`, nos pivôs). Como `NO ACTION`
-**bloqueia a exclusão do pai** em vez de anular o filho, isso afeta rotas de outros recursos:
-
-- `DELETE /squads/:id` → **`409 FK_CONSTRAINT`** se o squad tiver clientes (já é o caso de 15 deles).
-- `DELETE /users/:id` → **`409 FK_CONSTRAINT`** se o usuário for `specialist_id` ou `created_by` de
-  algum cliente (não ocorre hoje, pois as duas colunas estão NULL; passará a ocorrer quando forem
-  usadas).
+As três FKs de `client` (`squad_id`, `specialist_id`, `created_by`) são `SET NULL`, como as demais
+FKs nullable da Core. Até a migration `20261104162543_client_fks_on_delete_set_null` eram
+`NO ACTION`, o que bloqueava `DELETE /squads/:id` e `DELETE /users/:id` com `409 FK_CONSTRAINT`.
+Agora excluir o squad ou o usuário só anula o campo no cliente.
 
 ### Outras notas
 
@@ -518,9 +514,9 @@ da Core apontando para `user`/`squad` são `SET NULL` (ou `CASCADE`, nos pivôs)
    **`client.created_by` NÃO entra nessa lista** — lá é opcional de verdade.
 5. **CASCADE:** apagar um `system` apaga suas `api_key`, `systems_users` e `systems_bus` em cascata;
    apagar um `user`/`bu` apaga os vínculos `systems_users`/`users_bus`/`systems_bus` correspondentes;
-   apagar um `systems_users` apaga seu histórico de `systems_users_access`. **`client` é a exceção:**
-   suas FKs são `NO ACTION`, então ele **bloqueia** a exclusão do `squad`/`user` referenciado
-   (409) em vez de ser anulado em cascata — ver a seção da tabela `client`.
+   apagar um `systems_users` apaga seu histórico de `systems_users_access`. **SET NULL:** as FKs
+   nullable (`created_by`, `leader_id`, `squad_id`, `client.specialist_id`...) viram `null` quando o
+   registro referenciado é apagado; nenhuma exclusão é bloqueada por elas.
 6. **BigInt:** o `id` de `systems_users_access` é BigInt e a API o serializa como **string**.
    `client.id` também é BigInt no banco, mas a API o expõe como **number** — porque, ao contrário do
    id de log, ele é referenciado como FK inteira normal pelos outros sistemas, e os valores atuais

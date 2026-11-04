@@ -34,6 +34,10 @@ routes.ts  →  controller.ts  →  service.ts  →  schema.ts
 - **Auth:** todas as rotas (exceto `health`) passam por `apiKeyAuth` + `requireScope`. Catálogo de
   scopes em `src/config/scopes.ts`.
 - **CRUD padrão:** `DELETE` = hard delete; `is_active` é soft-disable independente (via `PATCH`).
+- **FK e exclusão (regra geral, decisão do dev em 2026-11-04):** FK *nullable* é **`ON DELETE SET
+  NULL`**; FK de pivô (`NOT NULL`, ex.: `users_bus`, `systems_users`) é `CASCADE`. Excluir o pai nunca
+  deve dar `409 FK_CONSTRAINT`. Fugir disso só por exceção explícita do dev, registrada no `rule.md`
+  do módulo. Coluna/FK nova segue a regra na migration (`onDelete: SetNull` no `schema.prisma`).
 - **Campos nullable no banco aceitam `null`:** todo campo opcional cuja coluna é *nullable* usa
   `.nullish()` (= `.nullable().optional()`) no Zod — o cliente pode mandar `null` em vez de omitir, e
   `null` grava `null` (limpa o valor/vínculo). **Exceções** (continuam `.optional()` sem `null`): os

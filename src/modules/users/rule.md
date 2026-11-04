@@ -19,7 +19,7 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
 | GET | `/departments/:id/users` | `users:read` | **Usuários de um departamento** (via `department_id`) — lista leve, mesma rota registrada em `departments/routes.ts` |
 | POST | `/users` | `users:write` | Cria usuário (+ vínculos de BU opcionais) |
 | PATCH | `/users/:id` | `users:write` | Atualiza (campos parciais; pode substituir `bus`) |
-| DELETE | `/users/:id` | `users:delete` | **Hard delete** (vínculos `users_bus` caem por CASCADE) |
+| DELETE | `/users/:id` | `users:delete` | **Hard delete** (`users_bus`/`systems_users` caem por CASCADE; `client.specialist_id`/`created_by` e as demais FKs nullable viram `null`) |
 | POST | `/users/:id/reset-password` | **`admin:*`** | Reseta a senha para a padrão. **Só token full-access** (ver Regras) |
 
 ## Schema (Zod) — `schema.ts`
@@ -85,7 +85,7 @@ o array `bus` (as BUs vinculadas, cada uma com `from_squad`).
   delega para `list` filtrando por `department_id` (rota `GET /departments/:id/users`, controller
   mora em `departments/controller.ts`); mesma resposta leve.
 - `list` embute `bus` em cada usuário via o Map acima; `getById`/`create`/`update` via `fetchUserBus`.
-- `remove` = hard delete (vínculos somem por `ON DELETE CASCADE`).
+- `remove` = hard delete. Pivôs somem por `CASCADE`; FKs nullable que apontam pro user (`client.specialist_id`, `squad.leader_id`, `created_by`...) viram `null` (`SET NULL`, USR-001). Não deve mais dar `409 FK_CONSTRAINT`.
 - `resetPassword(id)` — valida o user (404 `USER_NOT_FOUND`) e faz `update` gravando
   `env.DEFAULT_PASSWORD_HASH` na coluna `password`. Não passa por `hashPassword` (o valor já é hash).
 

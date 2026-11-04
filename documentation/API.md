@@ -1123,18 +1123,15 @@ mudar o contrato.
 | 404 | `CREATED_BY_NOT_FOUND` | `created_by` inexistente no create |
 | 409 | `CONFLICT` | `document` duplicado (`details.target` inclui `document`) |
 
-### ⚠️ Efeito colateral em `DELETE` de squads e usuários
+### Efeito em `DELETE` de squads e usuários
 
-As FKs de `client` são **`ON DELETE NO ACTION`** (assimetria com o resto da Core, onde são
-`SET NULL`/`CASCADE`). `NO ACTION` **bloqueia** a exclusão do pai em vez de anular o filho:
+As FKs de `client` são **`ON DELETE SET NULL`**, como o resto da Core:
 
-- **`DELETE /squads/:id`** → **`409 FK_CONSTRAINT`** se o squad tiver clientes vinculados. **Já
-  acontece hoje** (15 dos 293 clientes têm `squad_id`).
-- **`DELETE /users/:id`** → **`409 FK_CONSTRAINT`** se o usuário for `specialist_id` ou `created_by`
-  de algum cliente. Não ocorre hoje (colunas NULL), mas passará a ocorrer quando forem usadas.
+- **`DELETE /squads/:id`** → os clientes do squad ficam com `squad_id: null`.
+- **`DELETE /users/:id`** → os clientes em que o usuário era `specialist_id` ou `created_by` ficam
+  com esse campo `null`.
 
-Para excluir nesses casos, primeiro desvincule os clientes (`PATCH /clients/:id` com `squad_id: null`
-/ `specialist_id: null`).
+O cliente nunca é excluído junto, e essas exclusões não devolvem mais `409 FK_CONSTRAINT`.
 
 ---
 

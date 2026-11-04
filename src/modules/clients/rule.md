@@ -235,34 +235,23 @@ inteira (`md5(ROW(...)::text)`) só serve como selo final — sozinho ele não l
 
 Estado ao final: **297 linhas, `max(id)` 304, sequence 304**, hash idêntico nos dois bancos.
 
-## ⚠️ As FKs de `client` são `NO ACTION` — afeta `DELETE` de OUTROS módulos
+## FKs de `client` são `ON DELETE SET NULL` (USR-001)
 
-Verificado no banco em 2026-07-30 (`pg_constraint.confdeltype`): as três FKs de `client` saíram da
-migração como **`NO ACTION`**, enquanto **todas** as outras FKs da Core que apontam para
-`user`/`squad` são `SET NULL` (ou `CASCADE` nos pivôs):
+As três FKs de `client` saíram da migração original como **`NO ACTION`**, e isso **bloqueava** a
+exclusão do pai: `DELETE /users/:id` e `DELETE /squads/:id` davam **`409 FK_CONSTRAINT`** quando o
+usuário era especialista/criador de algum cliente ou o squad tinha clientes (USR-001, visto em
+produção no user 12). Corrigido na migration
+`prisma/migrations/20261104162543_client_fks_on_delete_set_null`, seguindo a regra geral da Core
+(FK nullable = `SET NULL`, ver `../rule.md`):
 
-| FK | `ON DELETE` | Resto da Core, p/ comparar |
-|---|---|---|
-| `client.squad_id → squad(id)` | **NO ACTION** | `user.squad_id` → `SET NULL` |
-| `client.specialist_id → user(id)` | **NO ACTION** | `squad.leader_id`, `user.leader_id` → `SET NULL` |
-| `client.created_by → user(id)` | **NO ACTION** | `api_key`/`band`/`department`/`position.created_by` → `SET NULL` |
+| FK | `ON DELETE` |
+|---|---|
+| `client.squad_id → squad(id)` | **SET NULL** |
+| `client.specialist_id → user(id)` | **SET NULL** |
+| `client.created_by → user(id)` | **SET NULL** |
 
-Consequência prática — **`NO ACTION` bloqueia a exclusão do pai** (não anula o filho), então isso
-muda o comportamento de rotas de **outros** módulos:
-
-- **`DELETE /squads/:id`** passa a devolver **`409 FK_CONSTRAINT`** se o squad tiver algum cliente
-  (`P2003` mapeado pelo `error-handler`). Já é o caso de **15 dos 293** clientes hoje, que têm
-  `squad_id` preenchido. Antes de `client` existir, essa exclusão sempre passava (a FK
-  `user.squad_id` é `SET NULL`).
-- **`DELETE /users/:id`** passa a devolver **`409 FK_CONSTRAINT`** se o usuário for
-  `specialist_id` ou `created_by` de algum cliente. **Não morde hoje** (as duas colunas estão 100%
-  NULL), mas morde assim que a atribuição de especialista começar a ser usada.
-
-**Não "consertar" isso no código.** É uma assimetria de **DDL**, e o banco é a fonte da verdade
-(`CLAUDE.md`: não rodar migration/ALTER). Se o comportamento desejado for o do resto da Core
-(`SET NULL`), a correção é um `ALTER TABLE ... DROP CONSTRAINT / ADD CONSTRAINT ... ON DELETE SET
-NULL` executado **no banco pelo dono do schema**, seguido de `prisma db pull`. Está registrado aqui
-como pendência consciente, não como bug do módulo.
+Efeito: excluir o usuário deixa os clientes dele **sem especialista** (`specialist_id = null`) e
+excluir o squad deixa os clientes **sem squad**. O cliente nunca é apagado junto.
 
 ## Service — `service.ts`
 
