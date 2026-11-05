@@ -1,0 +1,78 @@
+{
+  "versao": 1,
+  "papeis_ativos": [
+    {
+      "papel": "orquestrador",
+      "responsabilidade": "orquestrador-3f-core",
+      "descricao": "Leva uma frente do pedido ou plano aprovado até a aprovação do dev, delegando o código.",
+      "quando_chamar": "O dev chama para executar um plano aprovado ou um pedido que envolve código.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/orquestrador/SKILL.md"
+    },
+    {
+      "papel": "planner",
+      "responsabilidade": "planner",
+      "descricao": "Entrevista o dev e grava um plano executável.",
+      "quando_chamar": "O dev chama para planejar um pedido ou item do roadmap.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/planner/SKILL.md"
+    },
+    {
+      "papel": "joker",
+      "responsabilidade": "joker-3f-core",
+      "descricao": "Coringa do dev: investiga e coda direto.",
+      "quando_chamar": "O dev chama para tarefa direta; o Orquestrador, para tarefa transversal ou investigação.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/joker/SKILL.md"
+    },
+    {
+      "papel": "revisor",
+      "responsabilidade": "revisor-3f-core",
+      "descricao": "Segunda leitura independente do diff da frente; só aponta.",
+      "quando_chamar": "Recrutado pelo Orquestrador ou pelo joker, ou chamado pelo dev, para revisar uma frente.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/revisor/SKILL.md"
+    },
+    {
+      "papel": "back",
+      "responsabilidade": "back-3f-core",
+      "camada": "api",
+      "descricao": "Escreve o código da camada api na raiz do projeto (src/, prisma/).",
+      "quando_chamar": "Recrutado por quem coordena a frente para tarefas da camada api.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/back/SKILL.md"
+    },
+    {
+      "papel": "deploy",
+      "responsabilidade": "deploy",
+      "descricao": "Publica com ordem do dev e confere a produção só lendo.",
+      "quando_chamar": "Só o dev manda publicar; Orquestrador e joker avisam a cada commit para ele perguntar ao dev se publica ou espera.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/deploy/SKILL.md"
+    },
+    {
+      "papel": "roadmap",
+      "responsabilidade": "roadmap",
+      "descricao": "Mantém a lista de pendências por módulo e o HTML no portal.",
+      "quando_chamar": "O dev registra e consulta pendências; Orquestrador e joker avisam andamento.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/roadmap/SKILL.md"
+    },
+    {
+      "papel": "pesquisador",
+      "responsabilidade": "pesquisador-3f-core",
+      "descricao": "Pesquisa no projeto e na web e entrega um Markdown na biblioteca.",
+      "quando_chamar": "Investigação complexa ou contexto para o dev, o planner, o joker ou o Orquestrador.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/pesquisador/SKILL.md"
+    },
+    {
+      "papel": "maestri-dev",
+      "responsabilidade": "maestri-dev-3f-core",
+      "descricao": "Mantém o time de agentes do projeto.",
+      "quando_chamar": "O dev chama para corrigir, mudar ou criar agentes.",
+      "base": true,
+      "arquivo": ".maestri-base/papeis/maestri-dev/SKILL.md"
+    }
+  ]
+}

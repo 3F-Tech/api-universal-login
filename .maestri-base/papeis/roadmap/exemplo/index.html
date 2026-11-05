@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --fg: #1d2330; --muted: #6b7385; --line: #e3e6ec;
+    --red: #c62828; --orange: #d9730d; --blue: #2f6fd1; --gray: #8a93a6; --green: #2e8b57;
+    --violet: #7b4fc9; --teal: #13897f; --amber: #b7791f;
+    --status-parado: #cbd5e1; --status-execucao: #2563eb; --status-feito: #16a34a; --status-cancelado: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --card: #1b1f29; --fg: #e6e9f0; --muted: #98a0b3; --line: #2b3140;
+      --red: #ef6b6b; --orange: #f0a04b; --blue: #6ea2ff; --gray: #8a93a6; --green: #5cc58a;
+      --violet: #ad8cff; --teal: #4fd1c5; --amber: #e8b04f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  header h1 { margin: 0 0 2px; font-size: 22px; }
+  .muted, header p { color: var(--muted); margin: 4px 0; }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 8px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; min-width: 120px; }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .stat-parado b { color: var(--status-parado); }
+  .stat-em-execucao b { color: var(--status-execucao); }
+  .stat-feito b { color: var(--status-feito); }
+  .stat-cancelado b { color: var(--status-cancelado); }
+  .urgent { color: var(--red); margin: 8px 0 0; }
+  .errors { border: 1px solid var(--red); color: var(--red); border-radius: 8px; padding: 10px 14px; margin: 16px 0; }
+  .errors ul { margin: 6px 0 0; padding-left: 18px; }
+  .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 8px; padding: 24px; text-align: center; color: var(--muted); }
+  .group { margin-top: 26px; }
+  .group h2 { font-size: 16px; margin: 0 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .group h2 small { color: var(--muted); font-weight: normal; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  .item { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 0; margin-bottom: 6px; }
+  .item details { width: 100%; }
+  .item-summary { display: grid; grid-template-columns: 80px minmax(0, 1fr) 140px 400px; position: relative; align-items: baseline; gap: 2px 12px; cursor: pointer; list-style: none; padding: 7px 34px 7px 12px; }
+  .item-summary::-webkit-details-marker { display: none; }
+  .item-summary::after { content: '+'; position: absolute; top: 7px; right: 12px; color: var(--muted); font-size: 16px; line-height: 1; }
+  .item details[open] > .item-summary::after { content: '−'; }
+  .code { font-family: Consolas, "Cascadia Mono", monospace; font-weight: 600; }
+  .module { color: var(--muted); font-size: 12px; }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .extra { grid-column: 2 / -1; color: var(--muted); font-size: 12px; }
+  .description { border-top: 1px solid var(--line); padding: 2px 12px 10px; color: var(--fg); }
+  .description p { margin: 8px 0 0; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; white-space: nowrap; margin-right: 2px; }
+  .tipo-funcionalidade { color: var(--blue); }
+  .tipo-melhoria-tecnica { color: var(--violet); }
+  .tipo-suporte-correcao { color: var(--orange); }
+  .tipo-dependencia-externa { color: var(--gray); }
+  .tipo-verificacao { color: var(--teal); }
+  .prio-urgente { color: #fff; background: var(--red); border-color: var(--red); }
+  .prio-alta { color: var(--orange); }
+  .prio-normal { color: var(--blue); }
+  .prio-minima { color: var(--gray); }
+  .tam-pequeno, .tam-medio, .tam-grande, .tam-muito-grande { color: var(--muted); }
+  .tam-grande { font-weight: 600; }
+  .tam-muito-grande { font-weight: 700; color: var(--fg); }
+  .tag i { font-style: normal; opacity: .7; }
+  .tag-invalido { color: var(--red); }
+  .plano-com-plano { color: var(--teal); }
+  .plano-sem-plano { color: var(--amber); }
+  .status-parado { color: var(--status-parado); }
+  .status-em-execucao { color: var(--status-execucao); }
+  .status-feito { color: var(--status-feito); }
+  .status-cancelado { color: var(--status-cancelado); }
+  .group-feito .item { opacity: .55; }
+  .legend { margin-top: 32px; color: var(--muted); font-size: 12px; line-height: 2; }
+  .legend-k { display: inline-block; min-width: 76px; }
+  @media (max-width: 900px) { .item-summary { grid-template-columns: 80px minmax(0, 1fr); } .item-summary .module, .item-summary .tags, .item-summary .extra { grid-column: 2; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Roadmap</h1>
+    <p>8 itens · gerado em 03/11/2026, 12:00 a partir de docs/roadmap/*.md (este arquivo é gerado; edite os .md pelo agente do roadmap)</p>
+  </header>
+  <div class="stats">
+      <div class="stat stat-parado"><b>4</b><span>Parado</span></div>
+      <div class="stat stat-em-execucao"><b>2</b><span>Em execução</span></div>
+      <div class="stat stat-feito"><b>1</b><span>Feito</span></div>
+      <div class="stat stat-cancelado"><b>1</b><span>Cancelado</span></div>
+  </div>
+  <p class="urgent">Urgentes sem plano: <b>PED-003</b> Total do pedido errado com cupom</p>
+  <section class="group group-parado">
+    <h2>Parado <small>4</small></h2>
+    <ul>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">PED-003</span>
+            <span class="title">Total do pedido errado com cupom</span>
+            <span class="module">Pedidos</span>
+            <span class="tags"><span class="tag tipo-suporte-correcao">Suporte/correção</span><span class="tag prio-urgente"><i>prioridade</i> urgente</span><span class="tag tam-pequeno"><i>tamanho</i> pequeno</span><span class="tag plano-sem-plano">sem plano</span></span>
+          </summary>
+          <div class="description">
+            <p>Quando o cliente usa um cupom de porcentagem, o total do pedido mostra o desconto aplicado duas
+vezes. O total precisa bater com o valor cobrado.</p>
+          </div>
+        </details>
+      </li>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">PED-001</span>
+            <span class="title">Filtro de pedidos por período</span>
+            <span class="module">Pedidos</span>
+            <span class="tags"><span class="tag tipo-funcionalidade">Funcionalidade</span><span class="tag prio-alta"><i>prioridade</i> alta</span><span class="tag tam-pequeno"><i>tamanho</i> pequeno</span><span class="tag plano-sem-plano">sem plano</span></span>
+          </summary>
+          <div class="description">
+            <p>O atendimento filtra a lista de pedidos por período (data inicial e final), do mesmo jeito que já
+filtra por status, para responder ao cliente sem rolar a lista inteira.</p>
+          </div>
+        </details>
+      </li>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">CAT-001</span>
+            <span class="title">Busca de produtos sem acento</span>
+            <span class="module">Catálogo</span>
+            <span class="tags"><span class="tag tipo-melhoria-tecnica">Melhoria técnica</span><span class="tag prio-normal"><i>prioridade</i> normal</span><span class="tag tam-medio"><i>tamanho</i> médio</span><span class="tag plano-com-plano">com plano</span></span>
+            <span class="extra">plano: docs/plans/2026-10-25-busca-sem-acento/plan.md</span>
+          </summary>
+          <div class="description">
+            <p>A busca do catálogo acha &quot;café&quot; quando o cliente digita &quot;cafe&quot;, e o contrário. Hoje a busca exige
+o acento exato e devolve lista vazia.</p>
+          </div>
+        </details>
+      </li>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">CAT-004</span>
+            <span class="title">Página de produto com variações</span>
+            <span class="module">Catálogo</span>
+            <span class="tags"><span class="tag tipo-funcionalidade">Funcionalidade</span><span class="tag prio-normal"><i>prioridade</i> normal</span><span class="tag tam-muito-grande"><i>tamanho</i> muito grande</span><span class="tag plano-sem-plano">sem plano</span></span>
+          </summary>
+          <div class="description">
+            <p>O mesmo produto passa a ter variações (tamanho e cor), cada uma com preço e estoque próprios,
+escolhidas na página do produto antes de pôr no carrinho.</p>
+          </div>
+        </details>
+      </li>
+    </ul>
+  </section>
+  <section class="group group-em-execucao">
+    <h2>Em execução <small>2</small></h2>
+    <ul>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">CAT-003</span>
+            <span class="title">Conferir preços depois da importação</span>
+            <span class="module">Catálogo</span>
+            <span class="tags"><span class="tag tipo-verificacao">Verificação</span><span class="tag prio-alta"><i>prioridade</i> alta</span><span class="tag tam-medio"><i>tamanho</i> médio</span><span class="tag plano-sem-plano">sem plano</span><span class="tag status-em-execucao">em execução</span></span>
+            <span class="extra">status manual</span>
+          </summary>
+          <div class="description">
+            <p>Depois da importação da planilha do fornecedor, conferir se os preços publicados batem com a
+planilha, produto a produto, e listar os que divergem.</p>
+          </div>
+        </details>
+      </li>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">PED-002</span>
+            <span class="title">Exportar pedidos em CSV</span>
+            <span class="module">Pedidos</span>
+            <span class="tags"><span class="tag tipo-funcionalidade">Funcionalidade</span><span class="tag prio-normal"><i>prioridade</i> normal</span><span class="tag tam-medio"><i>tamanho</i> médio</span><span class="tag plano-com-plano">com plano</span><span class="tag status-em-execucao">em execução</span></span>
+            <span class="extra">plano: docs/plans/2026-10-22-exportar-pedidos-csv/plan.md</span>
+          </summary>
+          <div class="description">
+            <p>A lista de pedidos ganha um botão que baixa os pedidos filtrados em CSV, para a conferência mensal
+ser feita na planilha sem copiar linha por linha.</p>
+          </div>
+        </details>
+      </li>
+    </ul>
+  </section>
+  <section class="group group-feito">
+    <h2>Feito <small>1</small></h2>
+    <ul>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">PED-004</span>
+            <span class="title">Status &quot;enviado&quot; some do filtro</span>
+            <span class="module">Pedidos</span>
+            <span class="tags"><span class="tag tipo-suporte-correcao">Suporte/correção</span><span class="tag prio-normal"><i>prioridade</i> normal</span><span class="tag tam-pequeno"><i>tamanho</i> pequeno</span><span class="tag plano-sem-plano">sem plano</span><span class="tag status-feito">feito</span></span>
+            <span class="extra">feito: 2026-10-28 · commit 1a2b3c4</span>
+          </summary>
+          <div class="description">
+            <p>O filtro de status da lista de pedidos não oferece a opção &quot;enviado&quot;, e os pedidos nesse status só
+aparecem com o filtro limpo.</p>
+          </div>
+        </details>
+      </li>
+    </ul>
+  </section>
+  <section class="group group-cancelado">
+    <h2>Cancelado <small>1</small></h2>
+    <ul>
+      <li class="item">
+        <details>
+          <summary class="item-summary">
+            <span class="code">CAT-002</span>
+            <span class="title">Trocar a biblioteca de redimensionar imagens</span>
+            <span class="module">Catálogo</span>
+            <span class="tags"><span class="tag tipo-dependencia-externa">Dependência externa</span><span class="tag prio-minima"><i>prioridade</i> mínima</span><span class="tag tam-grande"><i>tamanho</i> grande</span><span class="tag plano-sem-plano">sem plano</span><span class="tag status-cancelado">cancelado</span></span>
+            <span class="extra">status manual</span>
+          </summary>
+          <div class="description">
+            <p>A biblioteca que redimensiona as fotos dos produtos deixou de ser mantida. Trocar por outra
+mantida, sem mudar o tamanho das fotos publicadas.</p>
+          </div>
+        </details>
+      </li>
+    </ul>
+  </section>
+  <p class="legend"><span class="legend-k">Tipo:</span> <span class="tag tipo-funcionalidade">Funcionalidade</span><span class="tag tipo-melhoria-tecnica">Melhoria técnica</span><span class="tag tipo-suporte-correcao">Suporte/correção</span><span class="tag tipo-dependencia-externa">Dependência externa</span><span class="tag tipo-verificacao">Verificação</span><br><span class="legend-k">Prioridade:</span> <span class="tag prio-minima">mínima</span><span class="tag prio-normal">normal</span><span class="tag prio-alta">alta</span><span class="tag prio-urgente">urgente</span><br><span class="legend-k">Tamanho:</span> <span class="tag tam-pequeno">pequeno</span><span class="tag tam-medio">médio</span><span class="tag tam-grande">grande</span><span class="tag tam-muito-grande">muito grande</span></p>
+</main>
+</body>
+</html>

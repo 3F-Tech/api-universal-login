@@ -1,0 +1,14 @@
+{
+  "versao": 1,
+  "pasta_roadmap": "docs/roadmap",
+  "pasta_planos": "docs/plans",
+  "registro_frentes": ".maestri-base/frentes-ativas.md",
+  "portal": "Roadmap",
+  "prefixo_commit": "docs(roadmap): ",
+  "fuso_horario": "America/Sao_Paulo",
+  "modulos": {
+    "pedidos": { "nome": "Pedidos", "prefixo": "PED" },
+    "catalogo": { "nome": "Catálogo", "prefixo": "CAT" },
+    "plataforma": { "nome": "Plataforma (transversal)", "prefixo": "PLT" }
+  }
+}

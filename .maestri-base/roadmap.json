@@ -1,0 +1,18 @@
+{
+  "versao": 1,
+  "pasta_roadmap": "docs/roadmap",
+  "pasta_planos": "docs/plans",
+  "registro_frentes": ".maestri-base/frentes-ativas.md",
+  "portal": "Roadmap",
+  "prefixo_commit": "docs(roadmap): ",
+  "fuso_horario": "America/Sao_Paulo",
+  "modulos": {
+    "auth": { "nome": "Auth", "prefixo": "AUT" },
+    "usuarios": { "nome": "Usuários", "prefixo": "USR" },
+    "organizacao": { "nome": "Organização (BUs, squads, departamentos, cargos, bands)", "prefixo": "ORG" },
+    "sistemas": { "nome": "Sistemas (vínculos e logs de acesso)", "prefixo": "SIS" },
+    "api-keys": { "nome": "API Keys", "prefixo": "KEY" },
+    "clientes": { "nome": "Clientes", "prefixo": "CLI" },
+    "plataforma": { "nome": "Plataforma (transversal)", "prefixo": "PLT" }
+  }
+}

@@ -5,8 +5,8 @@ Guia para agentes (Claude Code) trabalhando neste repositório. Leia antes de ed
 ## O que é
 
 **3F Core API** (`api-universal-login`): API de identidade centralizada da 3F Venture. Backend-to-backend,
-autenticada por **API Key** (`X-API-Key`) com autorização por **scopes**. PostgreSQL é a fonte da
-verdade; o schema do Prisma é **introspectado**, nunca escrito à mão.
+autenticada por **API Key** (`X-API-Key`) com autorização por **scopes**. PostgreSQL 17; o schema
+muda por **migrations do Prisma** (`prisma/migrations/`), aplicadas primeiro no banco de teste.
 
 ## Comandos
 
@@ -16,7 +16,7 @@ npm run typecheck    # tsc --noEmit  (rode SEMPRE após mudar tipos)
 npm test             # Vitest (smoke + unit, hermético — não toca o banco)
 npm run lint         # ESLint (flat config)
 npm run build        # compila para dist/
-npm run prisma:pull && npm run prisma:generate   # após mudanças no banco
+npm run prisma:generate   # após mudar o schema / aplicar migration
 ```
 
 Antes de concluir qualquer tarefa de código: **`npm run typecheck && npm run lint && npm test`**.
@@ -32,10 +32,19 @@ NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHan
   - **Sem `url` no `schema.prisma`.** A connection string da CLI fica em `prisma.config.ts`
     (`datasource.url`); em runtime quem conecta é o **driver adapter** `@prisma/adapter-pg` em
     `src/config/database.ts`. Reintroduzir `url` no schema quebra (`P1012`).
-  - **`prisma db pull` exige banco vivo** (Docker local na 5432 ou túnel SSH na 5433). Sem isso,
-    não há models nem client tipado.
-  - **Models são gerados por introspecção.** NÃO criar/editar models à mão nem rodar migrations
-    que criem tabelas.
+  - **Bancos:** **teste** = `3f_core_staging`, que o `.env` local alcança pelo túnel SSH em
+    `localhost:5433`; **produção** = `3f_core`, na VPS (só o Deploy mexe). Quem escolhe é o
+    `DATABASE_URL` do `.env`, e só o dev troca. Agente não abre o `.env`: o nome do banco aparece na
+    saída do `prisma migrate status`. Antes de migration, seed ou script que grave, confirme com o dev
+    que ele aponta para o teste.
+  - **Schema muda por migration.** Edite o `schema.prisma`, gere o SQL com `prisma migrate diff
+    --from-config-datasource --to-schema prisma/schema.prisma --script -o
+    prisma/migrations/<timestamp>_<nome>/migration.sql` e aplique **só no banco de teste** com
+    `prisma migrate deploy`; depois `npm run prisma:generate`. Em produção a migration é aplicada no
+    deploy, só com ordem do dev. Nunca `prisma migrate reset` nem `prisma db push`.
+  - **Baseline `0_init`:** já registrada no teste e na produção (2026-11-04, USR-001). Não rode o SQL
+    dela: o banco já existia antes das migrations. Evite `migrate dev` (pede shadow DB e, com drift,
+    propõe **resetar** o banco: recuse).
 - **DELETE = exclusão real** (hard delete). `is_active` é **independente** e mexido só via
   `PATCH { is_active }` (soft-disable, não soft-delete).
 - **Campos nullable no banco aceitam `null`:** todo campo opcional cuja coluna é *nullable* usa
@@ -75,7 +84,7 @@ NotFoundError(...)`) que o `error-handler` captura. Não criar wrapper `asyncHan
 - **Erros:** lance as classes de `utils/errors.js` (`NotFoundError`, `ConflictError`, etc.). O
   `error-handler` mapeia ZodError → 400 e erros conhecidos do Prisma (P2002→409, P2025→404,
   P2003→409). 5xx não vazam mensagem interna.
-- **Acesso a dados:** os models introspectados usam **nomes snake_case** (`prisma.api_key`,
+- **Acesso a dados:** os models usam **nomes snake_case** (`prisma.api_key`,
   `prisma.systems_users`, campos `created_at`, `system_id`...). Os **nomes de relação são feios e
   desambiguados** (ex: `user_band_created_byTouser`, `buTobu`). **Prefira campos escalares / ids
   explícitos e filtros `where` por relação** (`{ systems_users: { some: { system_id } } }`); evite
@@ -129,8 +138,17 @@ Testes de integração contra Postgres ficam como evolução (factories já em `
 
 ## Não faça
 
-- Não rode migrations Prisma que criem/alterem tabelas (banco é a fonte da verdade).
+- Não aplique migration em produção sem ordem do dev, nem `prisma migrate reset` / `prisma db push`
+  em banco algum.
 - Não use CORS aberto (`*`). CORS só via `CORS_ORIGINS` explícito.
 - Não logue senhas, keys cruas ou hashes.
 - Não commite `.env` (só `.env.example`).
 - Não hardcode credenciais/URLs/IPs — tudo via `env` validado (`src/config/env.ts`).
+
+<!-- maestri-base -->
+## Time Maestri
+- Este projeto usa o time de agentes do método Maestri: cada terminal segue o arquivo do papel que a responsabilidade dele indica.
+- Papéis, configurações e o mapa do time ficam em `.maestri-base/` (papéis ativos em `.maestri-base/projeto.json`).
+- Mudança no time (agente novo, regra de um papel, responsabilidade): peça ao terminal `maestri-dev`.
+- As regras deste arquivo valem para todos os papéis; o que é só de um papel fica em "Deste projeto" dele.
+<!-- /maestri-base -->
